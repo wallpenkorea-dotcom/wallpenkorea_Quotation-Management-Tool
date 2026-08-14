@@ -1,94 +1,214 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="100%" height="100%">
   <defs>
-    <radialGradient id="bgGlow" cx="50%" cy="50%" r="70%">
-      <stop offset="0%" stop-color="#2a2e35" />
-      <stop offset="40%" stop-color="#181a1f" />
-      <stop offset="100%" stop-color="#0a0b0d" />
+    <!-- Studio Ambient Lighting Gradients -->
+    <radialGradient id="studioLighting" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#484d56" />
+      <stop offset="25%" stop-color="#343840" />
+      <stop offset="55%" stop-color="#202328" />
+      <stop offset="85%" stop-color="#121316" />
+      <stop offset="100%" stop-color="#08090a" />
     </radialGradient>
-    <linearGradient id="bagGrad" x1="0" y1="0" x2="1" y2="1">
+
+    <linearGradient id="floorGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#181a1e" />
+      <stop offset="35%" stop-color="#1f2227" />
+      <stop offset="70%" stop-color="#15171a" />
+      <stop offset="100%" stop-color="#0c0d0f" />
+    </linearGradient>
+
+    <!-- Bag Fabric Gradients -->
+    <linearGradient id="bagFabricLight" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0%" stop-color="#4a505b" />
+      <stop offset="40%" stop-color="#3b404a" />
+      <stop offset="100%" stop-color="#25282f" />
+    </linearGradient>
+
+    <linearGradient id="bagFabricMed" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#383d47" />
+      <stop offset="50%" stop-color="#2a2e36" />
+      <stop offset="100%" stop-color="#1b1d22" />
+    </linearGradient>
+
+    <linearGradient id="bagFabricDark" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#2c3038" />
-      <stop offset="100%" stop-color="#16181c" />
+      <stop offset="100%" stop-color="#16181d" />
     </linearGradient>
-    <linearGradient id="bagHighlight" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#3d434d" />
-      <stop offset="100%" stop-color="#1e2126" />
+
+    <!-- Strap Gradient -->
+    <linearGradient id="webbingStrap" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0e1012" />
+      <stop offset="50%" stop-color="#1c1f24" />
+      <stop offset="100%" stop-color="#0e1012" />
     </linearGradient>
-    <filter id="subtleShadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.6"/>
+
+    <!-- Subtle Shadows -->
+    <filter id="softFloorShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" />
+    </filter>
+    <filter id="bagDepth" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.75"/>
     </filter>
   </defs>
 
-  <!-- Dark Studio Background -->
-  <rect width="1200" height="675" fill="url(#bgGlow)" />
+  <!-- Studio Background -->
+  <rect width="1280" height="720" fill="url(#studioLighting)" />
 
-  <!-- Studio Floor / Horizon line -->
-  <path d="M 0 520 L 1200 520 L 1200 675 L 0 675 Z" fill="#0d0e12" opacity="0.8" />
-  <ellipse cx="600" cy="560" rx="550" ry="80" fill="#000000" opacity="0.5" />
+  <!-- Studio Floor & Horizon Line -->
+  <path d="M 0 540 L 1280 540 L 1280 720 L 0 720 Z" fill="url(#floorGrad)" />
+  <line x1="0" y1="540" x2="1280" y2="540" stroke="#252930" stroke-width="1.5" opacity="0.4" />
 
-  <!-- Background Equipment Bags Silhouettes -->
-  <!-- Left Large Bag -->
-  <g filter="url(#subtleShadow)" opacity="0.85">
-    <rect x="250" y="110" width="340" height="420" rx="14" fill="url(#bagGrad)" stroke="#3a3f4a" stroke-width="3" />
+  <!-- Floor Ambient Shadows -->
+  <ellipse cx="640" cy="580" rx="600" ry="90" fill="#000000" opacity="0.6" filter="url(#softFloorShadow)" />
+  <ellipse cx="430" cy="570" rx="220" ry="40" fill="#000000" opacity="0.7" filter="url(#softFloorShadow)" />
+  <ellipse cx="220" cy="590" rx="160" ry="35" fill="#000000" opacity="0.75" filter="url(#softFloorShadow)" />
+  <ellipse cx="690" cy="595" rx="200" ry="35" fill="#000000" opacity="0.75" filter="url(#softFloorShadow)" />
+  <ellipse cx="1020" cy="575" rx="230" ry="40" fill="#000000" opacity="0.65" filter="url(#softFloorShadow)" />
+
+  <!-- 1. Background Left Bag -->
+  <g opacity="0.55" filter="url(#bagDepth)">
+    <rect x="70" y="325" width="220" height="230" rx="10" fill="url(#bagFabricDark)" stroke="#3a3f4a" stroke-width="2" />
+    <path d="M 70 345 L 290 345" stroke="#111317" stroke-width="6" />
+    <rect x="110" y="325" width="22" height="230" fill="url(#webbingStrap)" />
+    <rect x="220" y="325" width="22" height="230" fill="url(#webbingStrap)" />
+  </g>
+
+  <!-- 2. Center Background Standing Tall Case -->
+  <g filter="url(#bagDepth)" opacity="0.88">
+    <!-- Main Body -->
+    <rect x="270" y="145" width="370" height="430" rx="16" fill="url(#bagFabricMed)" stroke="#424854" stroke-width="3" />
+    <!-- Zipper Top Flap & Piping -->
+    <rect x="268" y="145" width="374" height="26" rx="8" fill="#1e2026" stroke="#48505e" stroke-width="1.5" />
+    <path d="M 270 171 L 640 171" stroke="#0e1013" stroke-width="5" />
+    
+    <!-- Vertical Webbing Straps -->
+    <rect x="385" y="145" width="36" height="430" fill="url(#webbingStrap)" />
+    <rect x="525" y="145" width="36" height="430" fill="url(#webbingStrap)" />
+    
+    <!-- Top Carry Handle Loop -->
+    <path d="M 403 145 C 403 45, 543 45, 543 145" fill="none" stroke="#111316" stroke-width="30" stroke-linecap="round" />
+    <path d="M 403 145 C 403 55, 543 55, 543 145" fill="none" stroke="#252930" stroke-width="12" stroke-linecap="round" opacity="0.6" />
+
+    <!-- Center vertical patch -->
+    <g transform="translate(470, 480) rotate(-90)">
+      <rect x="-60" y="-18" width="120" height="36" rx="18" fill="#131518" stroke="#3d434f" stroke-width="2" />
+      <text x="0" y="6" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-weight="900" font-size="17" fill="#6c7380" text-anchor="middle">wallPen</text>
+    </g>
+  </g>
+
+  <!-- 3. Right Background Long Trunk Case -->
+  <g filter="url(#bagDepth)" opacity="0.75">
+    <rect x="560" y="340" width="560" height="235" rx="14" fill="url(#bagFabricDark)" stroke="#3a404c" stroke-width="2.5" />
+    <path d="M 560 368 L 1120 368" stroke="#101215" stroke-width="5" />
     <!-- Straps -->
-    <rect x="360" y="110" width="32" height="420" fill="#111317" />
-    <rect x="490" y="110" width="32" height="420" fill="#111317" />
+    <rect x="710" y="340" width="32" height="235" fill="url(#webbingStrap)" />
+    <rect x="970" y="340" width="32" height="235" fill="url(#webbingStrap)" />
     <!-- Handle -->
-    <path d="M 376 110 C 376 20, 506 20, 506 110" fill="none" stroke="#111317" stroke-width="28" stroke-linecap="round" />
+    <path d="M 726 340 C 726 230, 886 230, 886 340" fill="none" stroke="#121417" stroke-width="26" stroke-linecap="round" />
+    
+    <!-- Right Oval Patch -->
+    <g transform="translate(1045, 475) rotate(-90)">
+      <rect x="-55" y="-18" width="110" height="36" rx="18" fill="#111316" stroke="#3a404c" stroke-width="2" />
+      <text x="0" y="6" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-weight="900" font-size="16" fill="#626975" text-anchor="middle">wallPen</text>
+    </g>
   </g>
 
-  <!-- Right Bag (Back) -->
-  <g filter="url(#subtleShadow)" opacity="0.65">
-    <rect x="520" y="320" width="530" height="230" rx="12" fill="url(#bagGrad)" stroke="#323742" stroke-width="2" />
-    <path d="M 680 320 C 680 230, 830 230, 830 320" fill="none" stroke="#111317" stroke-width="24" stroke-linecap="round" />
+  <!-- 4. Foreground Left Rectangular Bag -->
+  <g filter="url(#bagDepth)" opacity="0.96">
+    <rect x="105" y="380" width="310" height="260" rx="14" fill="url(#bagFabricLight)" stroke="#525b6a" stroke-width="3" />
+    <!-- Top lid & zipper line -->
+    <rect x="103" y="380" width="314" height="32" rx="10" fill="#2c3038" stroke="#525b6a" stroke-width="1.5" />
+    <path d="M 105 412 L 415 412" stroke="#121417" stroke-width="6" />
+
+    <!-- Webbing Straps -->
+    <rect x="180" y="380" width="30" height="260" fill="url(#webbingStrap)" />
+    <rect x="300" y="380" width="30" height="260" fill="url(#webbingStrap)" />
+
+    <!-- Front Handle -->
+    <path d="M 195 380 C 195 285, 315 285, 315 380" fill="none" stroke="#131518" stroke-width="24" stroke-linecap="round" />
+    <path d="M 195 380 C 195 292, 315 292, 315 380" fill="none" stroke="#333842" stroke-width="8" stroke-linecap="round" opacity="0.5" />
+
+    <!-- Metal D-Ring for shoulder strap on side -->
+    <path d="M 98 460 C 98 475, 114 475, 114 460 Z" fill="none" stroke="#717a8a" stroke-width="4" />
+    <path d="M 92 485 L 108 450" stroke="#111316" stroke-width="18" stroke-linecap="round" />
+
+    <!-- WallPen Oval Patch on Front Right -->
+    <g transform="translate(350, 520) rotate(-90)">
+      <rect x="-60" y="-19" width="120" height="38" rx="19" fill="#131518" stroke="#4f5766" stroke-width="2.5" />
+      <text x="0" y="6" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-weight="900" font-size="18" fill="#88909e" text-anchor="middle">wallPen</text>
+    </g>
   </g>
 
-  <!-- Foreground Left Bag -->
-  <g filter="url(#subtleShadow)" opacity="0.95">
-    <rect x="80" y="350" width="290" height="250" rx="12" fill="url(#bagHighlight)" stroke="#454c59" stroke-width="3" />
-    <!-- Vertical webbing straps -->
-    <rect x="150" y="350" width="28" height="250" fill="#111317" />
-    <rect x="260" y="350" width="28" height="250" fill="#111317" />
-    <!-- Front handle -->
-    <path d="M 164 350 C 164 260, 274 260, 274 350" fill="none" stroke="#111317" stroke-width="22" stroke-linecap="round" />
-    <!-- Oval patch -->
-    <rect x="300" y="440" width="38" height="120" rx="19" fill="#111317" stroke="#48505e" stroke-width="2" />
-    <text x="319" y="525" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="16" fill="#6b7280" text-anchor="middle" transform="rotate(-90 319 500)">wallPen</text>
-  </g>
+  <!-- 5. Foreground Center Duffel Bag -->
+  <g filter="url(#bagDepth)" opacity="0.96">
+    <rect x="525" y="425" width="375" height="215" rx="14" fill="url(#bagFabricLight)" stroke="#525b6a" stroke-width="3" />
+    <!-- Top lid -->
+    <rect x="523" y="425" width="379" height="28" rx="10" fill="#2d323b" stroke="#525b6a" stroke-width="1.5" />
+    <path d="M 525 453 L 900 453" stroke="#121417" stroke-width="5" />
 
-  <!-- Foreground Center Small Bag -->
-  <g filter="url(#subtleShadow)" opacity="0.95">
-    <rect x="520" y="400" width="360" height="200" rx="12" fill="url(#bagHighlight)" stroke="#454c59" stroke-width="3" />
     <!-- Straps -->
-    <rect x="600" y="400" width="26" height="200" fill="#111317" />
-    <rect x="760" y="400" width="26" height="200" fill="#111317" />
-    <!-- Handle -->
-    <path d="M 613 400 C 613 320, 773 320, 773 400" fill="none" stroke="#111317" stroke-width="20" stroke-linecap="round" />
-    <!-- Oval patch -->
-    <rect x="715" y="460" width="34" height="110" rx="17" fill="#111317" stroke="#48505e" stroke-width="2" />
-    <text x="732" y="535" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="15" fill="#6b7280" text-anchor="middle" transform="rotate(-90 732 515)">wallPen</text>
+    <rect x="610" y="425" width="28" height="215" fill="url(#webbingStrap)" />
+    <rect x="770" y="425" width="28" height="215" fill="url(#webbingStrap)" />
+
+    <!-- Handles -->
+    <path d="M 624 425 C 624 335, 784 335, 784 425" fill="none" stroke="#131518" stroke-width="22" stroke-linecap="round" />
+    <path d="M 624 425 C 624 342, 784 342, 784 425" fill="none" stroke="#353b47" stroke-width="7" stroke-linecap="round" opacity="0.5" />
+
+    <!-- WallPen Oval Patch on Center Front -->
+    <g transform="translate(730, 545) rotate(-90)">
+      <rect x="-55" y="-18" width="110" height="36" rx="18" fill="#131518" stroke="#4f5766" stroke-width="2.5" />
+      <text x="0" y="6" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-weight="900" font-size="17" fill="#88909e" text-anchor="middle">wallPen</text>
+    </g>
+
+    <!-- Side D-Ring Clip -->
+    <path d="M 903 540 C 916 540, 916 555, 903 555" fill="none" stroke="#717a8a" stroke-width="4" />
   </g>
 
-  <!-- Center Lighting Vignette & Contrast Overlay -->
-  <radialGradient id="centerDim" cx="50%" cy="48%" r="45%">
-    <stop offset="0%" stop-color="#000000" stop-opacity="0.65" />
-    <stop offset="70%" stop-color="#000000" stop-opacity="0.35" />
-    <stop offset="100%" stop-color="#000000" stop-opacity="0.8" />
+  <!-- Cinematic Contrast Overlay -->
+  <radialGradient id="cinematicVignette" cx="50%" cy="48%" r="48%">
+    <stop offset="0%" stop-color="#000000" stop-opacity="0.5" />
+    <stop offset="60%" stop-color="#000000" stop-opacity="0.3" />
+    <stop offset="100%" stop-color="#000000" stop-opacity="0.75" />
   </radialGradient>
-  <rect width="1200" height="675" fill="url(#centerDim)" />
+  <rect width="1280" height="720" fill="url(#cinematicVignette)" />
 
-  <!-- MAIN BRAND TYPOGRAPHY: wallPen KOREA -->
-  <!-- Stylized wallPen Logo -->
-  <g transform="translate(600, 310)" text-anchor="middle">
-    <!-- Big White wallPen text with clean tech geometry -->
-    <text y="0" font-family="'Plus Jakarta Sans', 'Arial Black', -apple-system, sans-serif" font-weight="900" font-size="108" fill="#ffffff" letter-spacing="-3">
-      wallPen
-    </text>
-    <!-- K O R E A Subtitle -->
-    <text y="68" font-family="'Plus Jakarta Sans', 'Arial', sans-serif" font-weight="800" font-size="28" fill="#ffffff" letter-spacing="16">
+  <!-- ============================================================ -->
+  <!-- CENTER EXACT BRAND GRAPHIC: wallPen KOREA                   -->
+  <!-- ============================================================ -->
+  <g transform="translate(640, 335)" text-anchor="middle">
+    <!-- Exact Geometric 'wallPen' vector typography -->
+    <g transform="translate(0, 0)">
+      <!-- Custom High-Contrast Clean White Geometry for 'wallPen' -->
+      <!-- Wordmark text with geometric round-square feel -->
+      <text x="0" y="0" 
+            font-family="'Plus Jakarta Sans', 'Arial Black', -apple-system, sans-serif" 
+            font-weight="900" 
+            font-size="124" 
+            fill="#ffffff" 
+            letter-spacing="-1"
+            filter="drop-shadow(0 4px 16px rgba(0,0,0,0.85))">
+        wallPen
+      </text>
+    </g>
+
+    <!-- 'K O R E A' with exact letter spacing -->
+    <text x="0" y="74" 
+          font-family="'Plus Jakarta Sans', 'Arial', sans-serif" 
+          font-weight="800" 
+          font-size="32" 
+          fill="#ffffff" 
+          letter-spacing="18"
+          filter="drop-shadow(0 2px 8px rgba(0,0,0,0.8))">
       K O R E A
     </text>
-    <!-- Korean Description -->
-    <text y="112" font-family="'Pretendard', -apple-system, 'Noto Sans KR', sans-serif" font-weight="600" font-size="20" fill="#e2e8f0" letter-spacing="1">
+
+    <!-- '벽면 프린트 서비스 / 장비판매' Korean subtitle -->
+    <text x="0" y="122" 
+          font-family="'Pretendard', -apple-system, 'Noto Sans KR', sans-serif" 
+          font-weight="600" 
+          font-size="22" 
+          fill="#f1f5f9" 
+          letter-spacing="1.5"
+          filter="drop-shadow(0 2px 6px rgba(0,0,0,0.8))">
       벽면 프린트 서비스 / 장비판매
     </text>
   </g>

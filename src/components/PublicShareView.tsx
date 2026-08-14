@@ -37,6 +37,18 @@ export const PublicShareView: React.FC<PublicShareViewProps> = ({ token }) => {
 
   // Lightbox state
   const [viewerImage, setViewerImage] = useState<{ url: string; title: string; downloadUrl?: string } | null>(null);
+  const [bannerUrl, setBannerUrl] = useState<string>('/wallpen-banner.svg');
+
+  useEffect(() => {
+    fetch('/api/settings/banner')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.bannerUrl) {
+          setBannerUrl(data.bannerUrl);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchPublicData = async () => {
     setLoading(true);
@@ -156,6 +168,17 @@ export const PublicShareView: React.FC<PublicShareViewProps> = ({ token }) => {
   return (
     <div className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-4xl mx-auto space-y-6">
+        {/* Brand Banner if available */}
+        {bannerUrl && (
+          <div className="w-full max-w-4xl mx-auto overflow-hidden rounded-2xl shadow-md border border-slate-800/20 bg-slate-950">
+            <img
+              src={bannerUrl}
+              alt="WallPen Korea"
+              className="w-full h-auto max-h-[220px] object-cover block select-none"
+            />
+          </div>
+        )}
+
         {/* Top Header Card */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs relative overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">

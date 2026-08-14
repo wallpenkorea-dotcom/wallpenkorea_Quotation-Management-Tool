@@ -113,6 +113,21 @@ async function startServer() {
 
   app.get('/api/settings/banner', (req: Request, res: Response) => {
     try {
+      const publicDir = path.join(process.cwd(), 'public');
+      if (fs.existsSync(publicDir)) {
+        const files = fs.readdirSync(publicDir);
+        const imageFile = files.find((f) => {
+          const lower = f.toLowerCase();
+          return (
+            (lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.webp')) &&
+            lower !== 'wallpen-banner.svg'
+          );
+        });
+        if (imageFile) {
+          return res.json({ bannerUrl: `/${imageFile}` });
+        }
+      }
+
       const settingsPath = path.join(DATA_DIR, 'settings.json');
       if (fs.existsSync(settingsPath)) {
         const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
