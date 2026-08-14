@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Lock, Mail, AlertCircle, ArrowRight, Camera, Upload, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
 import { AdminUser } from '../types';
 
 interface LoginFormProps {
@@ -14,9 +14,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [bannerUrl, setBannerUrl] = useState<string>(() => {
     return localStorage.getItem('wallpen_custom_banner') || '/wallpen-banner.svg';
   });
-  const [uploadingBanner, setUploadingBanner] = useState(false);
-  const [bannerSuccess, setBannerSuccess] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch('/api/settings/banner')
@@ -29,58 +26,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       })
       .catch(() => {});
   }, []);
-
-  const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Instant local preview
-    const localPreview = URL.createObjectURL(file);
-    setBannerUrl(localPreview);
-    setUploadingBanner(true);
-
-    const formData = new FormData();
-    formData.append('banner', file);
-
-    try {
-      const res = await fetch('/api/settings/banner', {
-        method: 'POST',
-        body: formData,
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.bannerUrl) {
-          setBannerUrl(data.bannerUrl);
-          localStorage.setItem('wallpen_custom_banner', data.bannerUrl);
-          setBannerSuccess(true);
-          setTimeout(() => setBannerSuccess(false), 3000);
-        }
-      } else {
-        // Fallback: Read as base64 and store in local storage & API
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64 = reader.result as string;
-          localStorage.setItem('wallpen_custom_banner', base64);
-          setBannerUrl(base64);
-          setBannerSuccess(true);
-          setTimeout(() => setBannerSuccess(false), 3000);
-        };
-        reader.readAsDataURL(file);
-      }
-    } catch {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result as string;
-        localStorage.setItem('wallpen_custom_banner', base64);
-        setBannerUrl(base64);
-        setBannerSuccess(true);
-        setTimeout(() => setBannerSuccess(false), 3000);
-      };
-      reader.readAsDataURL(file);
-    } finally {
-      setUploadingBanner(false);
-    }
-  };
 
   const executeLogin = (userObj: AdminUser, token: string) => {
     localStorage.setItem('wallpen_auth_user', JSON.stringify(userObj));
@@ -178,58 +123,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        {/* WallPen Korea Brand Banner */}
-        <div className="mx-auto w-full max-w-[360px] mb-5 group relative">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleBannerFileChange}
-            accept="image/*"
-            className="hidden"
+        {/* WallPen Korea Brand Banner (View Only) */}
+        <div className="mx-auto w-full max-w-[360px] mb-5 overflow-hidden rounded-2xl shadow-xl shadow-slate-900/15 border border-slate-800/30 bg-slate-950">
+          <img
+            id="login-main-brand-banner"
+            src={bannerUrl || '/wallpen-banner.svg'}
+            alt="wallPen KOREA"
+            className="w-full h-auto object-cover block select-none pointer-events-none"
+            loading="eager"
           />
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            title="클릭하여 원본 이미지(유튜브 배경2 등)로 교체 및 저장"
-            className="relative overflow-hidden rounded-2xl shadow-xl shadow-slate-900/15 border border-slate-800/30 bg-slate-950 cursor-pointer transition transform hover:scale-[1.01]"
-          >
-            <img
-              id="login-main-brand-banner"
-              src={bannerUrl || '/wallpen-banner.svg'}
-              alt="wallPen KOREA"
-              className="w-full h-auto object-cover block select-none"
-              loading="eager"
-            />
-            {/* Hover overlay for direct original image upload */}
-            <div className="absolute inset-0 bg-slate-950/65 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 text-white backdrop-blur-[2px]">
-              <Upload className="w-5 h-5 text-blue-400" />
-              <span className="text-xs font-semibold">이미지 파일 직접 업로드 / 변경</span>
-              <span className="text-[10px] text-slate-300">클릭하여 '유튜브 배경2.png' 등 원본 이미지를 선택하세요</span>
-            </div>
-
-            {uploadingBanner && (
-              <div className="absolute inset-0 bg-slate-950/80 flex items-center justify-center text-white text-xs font-semibold gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>이미지 저장 중...</span>
-              </div>
-            )}
-
-            {bannerSuccess && (
-              <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
-                <Check className="w-3 h-3" />
-                <span>적용 완료</span>
-              </div>
-            )}
-          </div>
-          <div className="mt-1 flex items-center justify-end">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="text-[11px] text-slate-500 hover:text-blue-600 flex items-center gap-1 transition"
-            >
-              <Camera className="w-3 h-3" />
-              <span>배너 이미지 변경</span>
-            </button>
-          </div>
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           월펜 현장 견적 관리

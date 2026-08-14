@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, LogOut, FileSpreadsheet, Download, ShieldCheck, User, ArrowLeft } from 'lucide-react';
+import { Building2, Plus, LogOut, FileSpreadsheet, Download, ShieldCheck, User, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import { ProjectItem, AdminUser } from './types';
 import { LoginForm } from './components/LoginForm';
 import { ProjectList } from './components/ProjectList';
 import { ProjectDetail } from './components/ProjectDetail';
 import { NewProjectModal } from './components/NewProjectModal';
 import { PublicShareView } from './components/PublicShareView';
+import { BannerSettingsModal } from './components/BannerSettingsModal';
 
 export default function App() {
   // Routing state based on Hash or URL
@@ -32,6 +33,7 @@ export default function App() {
   });
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Parse share token from URL hash or path
@@ -205,6 +207,16 @@ export default function App() {
 
             {/* Right Header Navigation & Actions */}
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsBannerModalOpen(true)}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-100 transition shadow-2xs cursor-pointer"
+                title="메인 로그인 및 공유 화면 배너 이미지 설정"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                <span>메인 배너 설정</span>
+              </button>
+
               <a
                 href="/api/projects/sample-template"
                 download="Wallpen_Sample_Estimate.xlsx"
@@ -281,6 +293,12 @@ export default function App() {
         isOpen={isNewModalOpen}
         onClose={() => setIsNewModalOpen(false)}
         onSuccess={handleProjectCreated}
+      />
+
+      {/* Admin-Only Main Banner Management Modal */}
+      <BannerSettingsModal
+        isOpen={isBannerModalOpen}
+        onClose={() => setIsBannerModalOpen(false)}
       />
     </div>
   );
