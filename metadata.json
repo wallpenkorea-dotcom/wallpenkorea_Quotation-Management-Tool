@@ -1,0 +1,6 @@
+{
+  "name": "월펜 현장 견적 관리",
+  "description": "벽면프린트 시공 엑셀 견적서 업로드 및 현장 데이터/파일/공개 링크 통합 관리 시스템",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
