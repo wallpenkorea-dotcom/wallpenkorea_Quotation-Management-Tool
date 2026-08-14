@@ -59,30 +59,22 @@ async function startServer() {
     res.json({ status: 'ok', service: 'WallPen Estimate Management API' });
   });
 
-  // 2. Auth endpoints (Robust session token & admin authentication)
+  // 2. Auth endpoints (Strict admin authentication: wallpenkorea@gmail.com / wallpen1661!)
   app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanPassword = (password || '').trim();
 
-    // Check credentials (supports wallpenkorea@gmail.com, admin@wallpen.co.kr, admin, or standard passwords)
-    const isMatched =
-      cleanEmail === 'wallpenkorea@gmail.com' ||
-      cleanEmail === 'admin@wallpen.co.kr' ||
-      cleanEmail.includes('wallpen') ||
-      cleanEmail.includes('admin') ||
-      cleanPassword === 'admin1234' ||
-      cleanPassword === 'wallpen2026' ||
-      cleanPassword === '1234' ||
-      cleanPassword.length >= 1;
-
-    if (isMatched) {
+    if (
+      (cleanEmail === 'wallpenkorea@gmail.com' || cleanEmail === 'admin@wallpen.co.kr') &&
+      cleanPassword === 'wallpen1661!'
+    ) {
       return res.json({
         success: true,
         user: {
           id: 'admin-1',
-          email: cleanEmail || 'wallpenkorea@gmail.com',
-          name: cleanEmail.includes('wallpen') ? '월펜 관리자' : '시스템 관리자',
+          email: 'wallpenkorea@gmail.com',
+          name: '월펜 관리자',
           role: 'admin',
         },
         token: 'auth_token_' + Date.now(),
@@ -91,7 +83,7 @@ async function startServer() {
 
     return res.status(401).json({
       success: false,
-      message: '이메일 또는 비밀번호가 일치하지 않습니다. (기본 비밀번호: admin1234)',
+      message: '이메일 또는 비밀번호가 일치하지 않습니다.',
     });
   });
 

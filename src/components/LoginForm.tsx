@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Mail, Building2, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, Building2, AlertCircle, ArrowRight } from 'lucide-react';
 import { AdminUser } from '../types';
 
 interface LoginFormProps {
@@ -8,7 +8,7 @@ interface LoginFormProps {
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('wallpenkorea@gmail.com');
-  const [password, setPassword] = useState('admin1234');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -28,6 +28,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
     if (!cleanEmail) {
       setErrorMsg('관리자 이메일을 입력해주세요.');
+      setLoading(false);
+      return;
+    }
+
+    if (!cleanPassword) {
+      setErrorMsg('비밀번호를 입력해주세요.');
       setLoading(false);
       return;
     }
@@ -59,20 +65,14 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
 
       // Fallback verification for deployed/static environments
       const isAllowed =
-        cleanEmail === 'wallpenkorea@gmail.com' ||
-        cleanEmail === 'admin@wallpen.co.kr' ||
-        cleanEmail.includes('wallpen') ||
-        cleanEmail.includes('admin') ||
-        cleanPassword === 'admin1234' ||
-        cleanPassword === 'wallpen2026' ||
-        cleanPassword === '1234' ||
-        cleanPassword.length >= 1;
+        (cleanEmail === 'wallpenkorea@gmail.com' || cleanEmail === 'admin@wallpen.co.kr') &&
+        cleanPassword === 'wallpen1661!';
 
       if (isAllowed) {
         const fallbackUser: AdminUser = {
           id: 'admin-1',
-          email: cleanEmail || 'wallpenkorea@gmail.com',
-          name: cleanEmail.includes('wallpen') ? '월펜 관리자' : '시스템 관리자',
+          email: 'wallpenkorea@gmail.com',
+          name: '월펜 관리자',
           role: 'admin',
         };
         executeLogin(fallbackUser, 'wp_auth_' + Date.now());
@@ -82,36 +82,27 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       if (serverErrorMsg) {
         setErrorMsg(serverErrorMsg);
       } else {
-        setErrorMsg('이메일 또는 비밀번호가 올바르지 않습니다. (체험 계정: admin1234)');
+        setErrorMsg('이메일 또는 비밀번호가 올바르지 않습니다.');
       }
     } catch (err: any) {
-      // In case of network / container startup delay, allow admin login
-      const fallbackUser: AdminUser = {
-        id: 'admin-1',
-        email: cleanEmail || 'wallpenkorea@gmail.com',
-        name: '월펜 관리자',
-        role: 'admin',
-      };
-      executeLogin(fallbackUser, 'wp_auth_' + Date.now());
+      // In case of network / container startup delay, verify credentials
+      if (
+        (cleanEmail === 'wallpenkorea@gmail.com' || cleanEmail === 'admin@wallpen.co.kr') &&
+        cleanPassword === 'wallpen1661!'
+      ) {
+        const fallbackUser: AdminUser = {
+          id: 'admin-1',
+          email: 'wallpenkorea@gmail.com',
+          name: '월펜 관리자',
+          role: 'admin',
+        };
+        executeLogin(fallbackUser, 'wp_auth_' + Date.now());
+      } else {
+        setErrorMsg('이메일 또는 비밀번호가 올바르지 않습니다.');
+      }
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickAdminLogin = () => {
-    const quickUser: AdminUser = {
-      id: 'admin-1',
-      email: 'wallpenkorea@gmail.com',
-      name: '월펜 관리자',
-      role: 'admin',
-    };
-    executeLogin(quickUser, 'wp_auth_quick_' + Date.now());
-  };
-
-  const handleFillDemo = () => {
-    setEmail('wallpenkorea@gmail.com');
-    setPassword('admin1234');
-    setErrorMsg('');
   };
 
   return (
@@ -158,7 +149,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@wallpen.co.kr"
+                  placeholder="wallpenkorea@gmail.com"
                   className="block w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition"
                 />
               </div>
@@ -182,18 +173,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="비밀번호를 입력하세요"
                   className="block w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition"
                 />
               </div>
             </div>
 
-            <div>
+            <div className="pt-2">
               <button
                 id="login-submit-btn"
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 active:scale-[0.99] transition disabled:opacity-60"
+                className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 active:scale-[0.99] transition disabled:opacity-60 cursor-pointer"
               >
                 {loading ? (
                   <>
@@ -209,32 +200,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
               </button>
             </div>
           </form>
-
-          {/* Quick Demo & 1-Click Access */}
-          <div className="mt-6 pt-5 border-t border-slate-100 space-y-2.5">
-            <button
-              type="button"
-              id="quick-admin-login-btn"
-              onClick={handleQuickAdminLogin}
-              className="w-full py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-            >
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>관리자 계정으로 바로 시작 (1-Click)</span>
-            </button>
-
-            <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-600">기본 계정: <strong>admin1234</strong></span>
-              </div>
-              <button
-                type="button"
-                onClick={handleFillDemo}
-                className="text-blue-600 hover:text-blue-800 font-semibold underline underline-offset-2 cursor-pointer"
-              >
-                계정 자동 채우기
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="mt-6 text-center text-xs text-slate-500">
