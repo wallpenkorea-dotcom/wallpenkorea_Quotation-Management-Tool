@@ -21,8 +21,15 @@ export default function App() {
     }
   });
 
-  // Data states
-  const [projects, setProjects] = useState<ProjectItem[]>([]);
+  // Data states with local cache fallback
+  const [projects, setProjects] = useState<ProjectItem[]>(() => {
+    try {
+      const cached = localStorage.getItem('wallpen_cached_projects');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -70,11 +77,16 @@ export default function App() {
       const res = await fetch('/api/projects');
       if (res.ok) {
         const data = await res.json();
-        setProjects(data);
-        // If there is an active selected project, refresh its data
-        if (selectedProject) {
-          const matched = data.find((p: ProjectItem) => p.id === selectedProject.id);
-          if (matched) setSelectedProject(matched);
+        if (Array.isArray(data)) {
+          setProjects(data);
+          try {
+            localStorage.setItem('wallpen_cached_projects', JSON.stringify(data));
+          } catch {}
+          // If there is an active selected project, refresh its data
+          if (selectedProject) {
+            const matched = data.find((p: ProjectItem) => p.id === selectedProject.id);
+            if (matched) setSelectedProject(matched);
+          }
         }
       }
     } catch (err) {
@@ -105,12 +117,24 @@ export default function App() {
 
   const handleProjectCreated = (newProject: ProjectItem) => {
     setIsNewModalOpen(false);
-    setProjects((prev) => [newProject, ...prev]);
+    setProjects((prev) => {
+      const updated = [newProject, ...prev];
+      try {
+        localStorage.setItem('wallpen_cached_projects', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     setSelectedProject(newProject);
   };
 
   const handleProjectUpdated = (updated: ProjectItem) => {
-    setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    setProjects((prev) => {
+      const next = prev.map((p) => (p.id === updated.id ? updated : p));
+      try {
+        localStorage.setItem('wallpen_cached_projects', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
     setSelectedProject(updated);
   };
 
