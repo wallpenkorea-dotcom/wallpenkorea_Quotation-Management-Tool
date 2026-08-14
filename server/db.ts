@@ -3,9 +3,9 @@ import path from 'path';
 import crypto from 'crypto';
 import { ProjectItem, PublicProjectView, ProjectFile, PublicSettings } from '../src/types';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
-const DB_FILE = path.join(DATA_DIR, 'projects.json');
+export const DATA_DIR = path.join(process.cwd(), 'data');
+export const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
+export const DB_FILE = path.join(DATA_DIR, 'projects.json');
 
 // Ensure directories exist
 if (!fs.existsSync(DATA_DIR)) {
@@ -429,5 +429,3 @@ export class ProjectDatabase {
     return { data: view };
   }
 }
-
-export { UPLOADS_DIR };

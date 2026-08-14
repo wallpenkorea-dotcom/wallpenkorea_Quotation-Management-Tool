@@ -4,7 +4,7 @@ import fs from 'fs';
 import multer from 'multer';
 import { createServer as createViteServer } from 'vite';
 import { parseExcelEstimate } from './server/excelParser';
-import { ProjectDatabase, UPLOADS_DIR, generateToken, getDefaultPublicSettings } from './server/db';
+import { ProjectDatabase, DATA_DIR, UPLOADS_DIR, generateToken, getDefaultPublicSettings } from './server/db';
 import { generateSampleExcelBuffer } from './server/sampleExcel';
 import { FileType, ProjectFile } from './src/types';
 
@@ -85,6 +85,45 @@ async function startServer() {
       success: false,
       message: '이메일 또는 비밀번호가 일치하지 않습니다.',
     });
+  });
+
+  // 2.1 Banner settings endpoints
+  app.post('/api/settings/banner', upload.single('banner'), (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: '이미지 파일이 첨부되지 않았습니다.' });
+      }
+      const bannerUrl = `/uploads/${req.file.filename}`;
+      // Persist in metadata or settings
+      const settingsPath = path.join(DATA_DIR, 'settings.json');
+      let settings: any = {};
+      if (fs.existsSync(settingsPath)) {
+        try {
+          settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+        } catch {}
+      }
+      settings.bannerUrl = bannerUrl;
+      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+
+      res.json({ success: true, bannerUrl });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || '배너 저장 실패' });
+    }
+  });
+
+  app.get('/api/settings/banner', (req: Request, res: Response) => {
+    try {
+      const settingsPath = path.join(DATA_DIR, 'settings.json');
+      if (fs.existsSync(settingsPath)) {
+        const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+        if (settings.bannerUrl) {
+          return res.json({ bannerUrl: settings.bannerUrl });
+        }
+      }
+      res.json({ bannerUrl: '/wallpen-banner.svg' });
+    } catch {
+      res.json({ bannerUrl: '/wallpen-banner.svg' });
+    }
   });
 
   // 3. Excel parsing endpoint (Takes uploaded Excel buffer & returns extracted fields with AI learning)
