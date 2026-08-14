@@ -135,9 +135,9 @@ async function startServer() {
           return res.json({ bannerUrl: settings.bannerUrl });
         }
       }
-      res.json({ bannerUrl: '/wallpen-banner.svg' });
+      res.json({ bannerUrl: '/wallpen-banner1.svg' });
     } catch {
-      res.json({ bannerUrl: '/wallpen-banner.svg' });
+      res.json({ bannerUrl: '/wallpen-banner1.svg' });
     }
   });
 

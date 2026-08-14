@@ -37,7 +37,7 @@ export const PublicShareView: React.FC<PublicShareViewProps> = ({ token }) => {
 
   // Lightbox state
   const [viewerImage, setViewerImage] = useState<{ url: string; title: string; downloadUrl?: string } | null>(null);
-  const [bannerUrl, setBannerUrl] = useState<string>('/wallpen-banner.svg');
+  const [bannerUrl, setBannerUrl] = useState<string>('/wallpen-banner1.svg');
 
   useEffect(() => {
     fetch('/api/settings/banner')

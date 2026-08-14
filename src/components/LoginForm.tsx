@@ -12,7 +12,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [bannerUrl, setBannerUrl] = useState<string>(() => {
-    return localStorage.getItem('wallpen_custom_banner') || '/wallpen-banner.svg';
+    return localStorage.getItem('wallpen_custom_banner') || '/wallpen-banner1.svg';
   });
 
   useEffect(() => {
@@ -127,7 +127,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         <div className="mx-auto w-full max-w-[360px] mb-5 overflow-hidden rounded-2xl shadow-xl shadow-slate-900/15 border border-slate-800/30 bg-slate-950">
           <img
             id="login-main-brand-banner"
-            src={bannerUrl || '/wallpen-banner.svg'}
+            src={bannerUrl || '/wallpen-banner1.svg'}
             alt="wallPen KOREA"
             className="w-full h-auto object-cover block select-none pointer-events-none"
             loading="eager"

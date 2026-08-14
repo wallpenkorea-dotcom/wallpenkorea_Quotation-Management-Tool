@@ -8,7 +8,7 @@ interface BannerSettingsModalProps {
 
 export const BannerSettingsModal: React.FC<BannerSettingsModalProps> = ({ isOpen, onClose }) => {
   const [currentBanner, setCurrentBanner] = useState<string>(() => {
-    return localStorage.getItem('wallpen_custom_banner') || '/wallpen-banner.svg';
+    return localStorage.getItem('wallpen_custom_banner') || '/wallpen-banner1.svg';
   });
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -118,7 +118,7 @@ export const BannerSettingsModal: React.FC<BannerSettingsModalProps> = ({ isOpen
   const handleResetToDefault = async () => {
     try {
       localStorage.removeItem('wallpen_custom_banner');
-      setCurrentBanner('/wallpen-banner.svg');
+      setCurrentBanner('/wallpen-banner1.svg');
       setPreviewUrl(null);
       setSelectedFile(null);
       setSuccessMsg('기본 브랜드 배너로 초기화되었습니다.');
