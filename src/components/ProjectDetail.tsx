@@ -201,6 +201,26 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
     });
   };
 
+  const handleAreaChange = (val: number | null) => {
+    setFormData((prev) => {
+      let w = prev.printWidthMm;
+      let h = prev.printHeightMm;
+      if (val && val > 0) {
+        if (w && w > 0 && (!h || h <= 0)) {
+          h = Math.round((val * 1000000) / w);
+        } else if (h && h > 0 && (!w || w <= 0)) {
+          w = Math.round((val * 1000000) / h);
+        }
+      }
+      return {
+        ...prev,
+        printAreaM2: val,
+        printWidthMm: w,
+        printHeightMm: h,
+      };
+    });
+  };
+
   // File Upload Handlers
   const handleFileUpload = async (files: FileList) => {
     if (!files || files.length === 0) return;
@@ -656,29 +676,20 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
             </div>
           </div>
 
-          {/* Section 2: 시공 정보 */}
+          {/* Section 2: 시공 벽면 및 출력 규격 */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-2xs">
             <div className="flex items-center gap-2 pb-3 mb-4 border-b border-slate-100 text-sm font-bold text-slate-900">
               <Layers className="w-4 h-4 text-indigo-600" />
-              시공 정보 & 출력 사양
+              시공 벽면 및 출력 규격
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 mb-1">시공 내용</label>
-                <input
-                  type="text"
-                  value={formData.constructionDetails || ''}
-                  onChange={(e) => setFormData({ ...formData, constructionDetails: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
-                />
-              </div>
-
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">시공 벽면 재질</label>
                 <input
                   type="text"
                   value={formData.wallMaterial || ''}
                   onChange={(e) => setFormData({ ...formData, wallMaterial: e.target.value })}
+                  placeholder="예: 스타코, 스톤, 도장면"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
               </div>
@@ -691,6 +702,7 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
                   onChange={(e) =>
                     handleDimensionChange('printWidthMm', e.target.value ? Number(e.target.value) : null)
                   }
+                  placeholder="예: 1200"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
               </div>
@@ -703,46 +715,32 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
                   onChange={(e) =>
                     handleDimensionChange('printHeightMm', e.target.value ? Number(e.target.value) : null)
                   }
+                  placeholder="예: 2500"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">출력 면적 (㎡)</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">출력 면적 (㎡ / 헤베)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={formData.printAreaM2 ?? ''}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      printAreaM2: e.target.value ? Number(e.target.value) : null,
-                    })
+                    handleAreaChange(e.target.value ? Number(e.target.value) : null)
                   }
+                  placeholder="예: 3.00"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-blue-700 font-bold focus:outline-none focus:ring-2 focus:ring-blue-600"
                 />
               </div>
 
-              <div className="md:col-span-3">
-                <label className="inline-flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(formData.useWhiteInk)}
-                    onChange={(e) => setFormData({ ...formData, useWhiteInk: e.target.checked })}
-                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
-                  />
-                  <span className="text-xs font-semibold text-slate-700">
-                    화이트 잉크 사용 여부 (진한 벽면 및 투명면 인쇄)
-                  </span>
-                </label>
-              </div>
-
-              <div className="md:col-span-3">
+              <div className="sm:col-span-2 lg:col-span-4">
                 <label className="block text-xs font-semibold text-slate-700 mb-1">특이사항</label>
                 <textarea
                   rows={3}
                   value={formData.specialNotes || ''}
                   onChange={(e) => setFormData({ ...formData, specialNotes: e.target.value })}
+                  placeholder="특이사항 및 시공 조건"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 text-xs leading-relaxed"
                 />
               </div>

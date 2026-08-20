@@ -171,14 +171,20 @@ export function parseGridData(rawRows: any[][], sheetName: string, fileName?: st
   const colIndex: { [key: string]: number } = {};
   for (let r = 0; r < numRows; r++) {
     const row = (rawRows[r] || []).map(cleanStr);
-    if (row.some((c) => c === 'No' || c === '내용' || c === '품명' || c === '항목')) {
+    if (row.some((c) => c === 'No' || c === '내용' || c === '품명' || c === '항목' || c === '이미지 내용' || c === '품목')) {
       headerRowIndex = r;
       row.forEach((colName, idx) => {
-        if (colName === '내용' || colName === '품명' || colName === '항목') colIndex.desc = idx;
-        if (colName === '재질' || colName === '벽면재질') colIndex.material = idx;
+        if (colName === '내용' || colName === '품명' || colName === '항목' || colName === '이미지 내용' || colName === '품목' || colName.includes('내용')) {
+          if (colIndex.desc === undefined) colIndex.desc = idx;
+        }
+        if (colName === '재질' || colName === '벽면재질' || colName === '벽면 재질' || colName.includes('재질')) {
+          colIndex.material = idx;
+        }
         if (colName.includes('가로')) colIndex.width = idx;
         if (colName.includes('세로')) colIndex.height = idx;
-        if (colName.includes('총헤베') || colName === '헤베' || colName.includes('면적')) colIndex.area = idx;
+        if (colName.includes('총헤베')) colIndex.totalArea = idx;
+        else if (colName === '헤베' || (colName.includes('면적') && !colName.includes('총'))) colIndex.area = idx;
+        if (colName === '수량' || colName === '수량(EA)' || colName === 'EA') colIndex.qty = idx;
         if (colName.includes('공급가액+세액') || colName.includes('합계') || colName.includes('총금액')) colIndex.total = idx;
         if (colName === '공급가액' || colName === '공급가') colIndex.supply = idx;
       });
@@ -186,7 +192,19 @@ export function parseGridData(rawRows: any[][], sheetName: string, fileName?: st
     }
   }
 
-  const items: Array<{ desc: string; material?: string; width?: number; height?: number; area?: number }> = [];
+  const items: Array<{
+    desc: string;
+    material?: string;
+    width?: number;
+    height?: number;
+    qty?: number;
+    area?: number;
+    totalArea?: number;
+  }> = [];
+
+  let tableSumArea = 0;
+  const materialsList: string[] = [];
+
   if (headerRowIndex !== -1) {
     for (let r = headerRowIndex + 1; r < numRows; r++) {
       const row = rawRows[r] || [];
@@ -194,48 +212,130 @@ export function parseGridData(rawRows: any[][], sheetName: string, fileName?: st
       const noCol = cleanStr(row[1] || row[0]);
 
       if (firstCol.includes('합계') || noCol.includes('합계') || firstCol.includes('특이사항') || noCol.includes('특이사항')) {
-        if ((firstCol.includes('합계') || noCol.includes('합계')) && !extracted.totalAmount) {
-          for (let c = 0; c < row.length; c++) {
-            const num = parseNumber(row[c]);
-            if (num && num > 10000) {
-              extracted.totalAmount = num;
-              break;
+        if (firstCol.includes('합계') || noCol.includes('합계')) {
+          // Check for total amount
+          if (!extracted.totalAmount) {
+            for (let c = 0; c < row.length; c++) {
+              const num = parseNumber(row[c]);
+              if (num && num > 10000) {
+                extracted.totalAmount = num;
+                break;
+              }
             }
+          }
+          // Check for total area in sum row (e.g., 총헤베 column having 7 or 12.29)
+          if (colIndex.totalArea !== undefined && row[colIndex.totalArea]) {
+            const tArea = parseDecimal(row[colIndex.totalArea]);
+            if (tArea && tArea > 0 && tArea < 10000) tableSumArea = tArea;
+          } else if (colIndex.area !== undefined && row[colIndex.area]) {
+            const tArea = parseDecimal(row[colIndex.area]);
+            if (tArea && tArea > 0 && tArea < 10000) tableSumArea = tArea;
           }
         }
         break;
       }
 
       if (firstCol && !/^\d+$/.test(firstCol)) {
+        const mat = colIndex.material !== undefined ? cleanStr(row[colIndex.material]) : undefined;
+        if (mat && !materialsList.includes(mat) && !mat.includes('할인') && !mat.includes('비용')) {
+          materialsList.push(mat);
+        }
+
+        const widthVal = colIndex.width !== undefined ? parseDecimal(row[colIndex.width]) : undefined;
+        const heightVal = colIndex.height !== undefined ? parseDecimal(row[colIndex.height]) : undefined;
+        const qtyVal = colIndex.qty !== undefined ? parseDecimal(row[colIndex.qty]) || 1 : 1;
+        const areaVal = colIndex.area !== undefined ? parseDecimal(row[colIndex.area]) : undefined;
+        const totalAreaVal = colIndex.totalArea !== undefined ? parseDecimal(row[colIndex.totalArea]) : undefined;
+
         items.push({
           desc: firstCol,
-          material: colIndex.material !== undefined ? cleanStr(row[colIndex.material]) : undefined,
-          width: colIndex.width !== undefined ? parseDecimal(row[colIndex.width]) : undefined,
-          height: colIndex.height !== undefined ? parseDecimal(row[colIndex.height]) : undefined,
-          area: colIndex.area !== undefined ? parseDecimal(row[colIndex.area]) : undefined,
+          material: mat,
+          width: widthVal,
+          height: heightVal,
+          qty: qtyVal,
+          area: areaVal,
+          totalArea: totalAreaVal,
         });
       }
     }
+  }
+
+  if (materialsList.length > 0 && !extracted.wallMaterial) {
+    extracted.wallMaterial = materialsList.join(', ');
   }
 
   if (items.length > 0) {
     if (!extracted.constructionDetails) {
       extracted.constructionDetails = items.slice(0, 3).map((it) => it.desc).join(', ') + (items.length > 3 ? ` 외 ${items.length - 3}건` : '');
     }
-    const matItem = items.find((it) => it.material);
-    if (matItem && matItem.material && !extracted.wallMaterial) extracted.wallMaterial = matItem.material;
 
-    const sizeItem = items.find((it) => it.width && it.height);
-    if (sizeItem) {
-      if (!extracted.printWidthMm && sizeItem.width) {
-        extracted.printWidthMm = sizeItem.width < 100 ? Math.round(sizeItem.width * 1000) : Math.round(sizeItem.width);
+    let calculatedSumWidthM = 0;
+    let calculatedMaxHeightM = 0;
+    let calculatedSumAreaM2 = 0;
+    let validDimensionCount = 0;
+
+    items.forEach((item) => {
+      const q = item.qty || 1;
+      if (item.width && item.width > 0) {
+        const wM = item.width > 100 ? item.width / 1000 : item.width;
+        calculatedSumWidthM += wM * q;
+        validDimensionCount++;
       }
-      if (!extracted.printHeightMm && sizeItem.height) {
-        extracted.printHeightMm = sizeItem.height < 100 ? Math.round(sizeItem.height * 1000) : Math.round(sizeItem.height);
+      if (item.height && item.height > 0) {
+        const hM = item.height > 100 ? item.height / 1000 : item.height;
+        if (hM > calculatedMaxHeightM) {
+          calculatedMaxHeightM = hM;
+        }
       }
-      if (!extracted.printAreaM2 && sizeItem.area) {
-        extracted.printAreaM2 = sizeItem.area;
+      if (item.totalArea && item.totalArea > 0) {
+        calculatedSumAreaM2 += item.totalArea;
+      } else if (item.area && item.area > 0) {
+        calculatedSumAreaM2 += item.area * q;
+      } else if (item.width && item.height) {
+        const wM = item.width > 100 ? item.width / 1000 : item.width;
+        const hM = item.height > 100 ? item.height / 1000 : item.height;
+        calculatedSumAreaM2 += wM * hM * q;
       }
+    });
+
+    // 1. Total Width
+    if (!extracted.printWidthMm && calculatedSumWidthM > 0) {
+      extracted.printWidthMm = Math.round(calculatedSumWidthM * 1000);
+    }
+
+    // 2. Total Height (representative max height or scaled)
+    if (!extracted.printHeightMm && calculatedMaxHeightM > 0) {
+      extracted.printHeightMm = Math.round(calculatedMaxHeightM * 1000);
+    }
+
+    // 3. Total Area (㎡ / 헤베)
+    const finalArea = tableSumArea > 0 ? tableSumArea : calculatedSumAreaM2;
+    if (!extracted.printAreaM2 && finalArea > 0) {
+      extracted.printAreaM2 = parseFloat(finalArea.toFixed(2));
+    }
+  }
+
+  // Cross-calculation fallback: If width and height exist but area is missing, auto-calculate area
+  if (!extracted.printAreaM2 && extracted.printWidthMm && extracted.printHeightMm) {
+    const area = (extracted.printWidthMm / 1000) * (extracted.printHeightMm / 1000);
+    if (area > 0) {
+      extracted.printAreaM2 = parseFloat(area.toFixed(2));
+    }
+  }
+
+  // If area and width exist but height is missing, auto-calculate height
+  if (!extracted.printHeightMm && extracted.printAreaM2 && extracted.printWidthMm && extracted.printWidthMm > 0) {
+    const calculatedHeightMm = Math.round((extracted.printAreaM2 * 1000000) / extracted.printWidthMm);
+    if (calculatedHeightMm > 0) {
+      extracted.printHeightMm = calculatedHeightMm;
+    }
+  }
+
+  // If area and height exist but width is missing, auto-calculate width
+  if (!extracted.printWidthMm && extracted.printAreaM2 && extracted.printHeightMm && extracted.printHeightMm > 0) {
+    const calculatedWidthMm = Math.round((extracted.printAreaM2 * 1000000) / extracted.printHeightMm);
+    if (calculatedWidthMm > 0) {
+      extracted.printWidthMm = calculatedWidthMm;
     }
   }
 

@@ -72,7 +72,6 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   const [internalMemo, setInternalMemo] = useState('');
 
   const [saving, setSaving] = useState(false);
-  const [showOptionalSpecs, setShowOptionalSpecs] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -108,7 +107,6 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
     setStatus('견적 작성');
     setPaymentStatus('미청구');
     setInternalMemo('');
-    setShowOptionalSpecs(false);
   };
 
   const handleClose = () => {
@@ -128,9 +126,27 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
     setScheduledDate(data.scheduledDate || '');
     setConstructionDetails(data.constructionDetails || '');
     setWallMaterial(data.wallMaterial || '');
-    setPrintWidthMm(data.printWidthMm ? String(data.printWidthMm) : '');
-    setPrintHeightMm(data.printHeightMm ? String(data.printHeightMm) : '');
-    setPrintAreaM2(data.printAreaM2 ? String(data.printAreaM2) : '');
+
+    let finalWidth = data.printWidthMm ? String(data.printWidthMm) : '';
+    let finalHeight = data.printHeightMm ? String(data.printHeightMm) : '';
+    let finalArea = data.printAreaM2 ? String(data.printAreaM2) : '';
+
+    const numW = parseFloat(finalWidth);
+    const numH = parseFloat(finalHeight);
+    const numA = parseFloat(finalArea);
+
+    if (numW > 0 && numH > 0 && (!finalArea || numA <= 0)) {
+      finalArea = ((numW / 1000) * (numH / 1000)).toFixed(2);
+    } else if (numA > 0 && numW > 0 && (!finalHeight || numH <= 0)) {
+      finalHeight = String(Math.round((numA * 1000000) / numW));
+    } else if (numA > 0 && numH > 0 && (!finalWidth || numW <= 0)) {
+      finalWidth = String(Math.round((numA * 1000000) / numH));
+    }
+
+    setPrintWidthMm(finalWidth);
+    setPrintHeightMm(finalHeight);
+    setPrintAreaM2(finalArea);
+
     setUseWhiteInk(!!data.useWhiteInk);
     setSupplyAmount(data.supplyAmount || 0);
     setTaxAmount(data.taxAmount || 0);
@@ -143,10 +159,6 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
     if (data.detectedSheetName) setDetectedSheet(data.detectedSheetName);
     if (data.aiLearnedSummary) setAiSummary(data.aiLearnedSummary);
     if (data.aiExtractedFieldsCount) setAiFieldsCount(data.aiExtractedFieldsCount);
-
-    if (data.printWidthMm || data.printHeightMm || data.wallMaterial || data.constructionDetails) {
-      setShowOptionalSpecs(true);
-    }
 
     if (originalFile) {
       setUploadedOriginalFile(originalFile);
@@ -262,6 +274,20 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
     const numH = parseFloat(h);
     if (!isNaN(numW) && !isNaN(numH) && numW > 0 && numH > 0) {
       setPrintAreaM2(((numW / 1000) * (numH / 1000)).toFixed(2));
+    }
+  };
+
+  const handleAreaChange = (a: string) => {
+    setPrintAreaM2(a);
+    const numA = parseFloat(a);
+    const numW = parseFloat(printWidthMm);
+    const numH = parseFloat(printHeightMm);
+    if (!isNaN(numA) && numA > 0) {
+      if (!isNaN(numW) && numW > 0 && (isNaN(numH) || numH <= 0)) {
+        setPrintHeightMm(String(Math.round((numA * 1000000) / numW)));
+      } else if (!isNaN(numH) && numH > 0 && (isNaN(numW) || numW <= 0)) {
+        setPrintWidthMm(String(Math.round((numA * 1000000) / numH)));
+      }
     }
   };
 
@@ -796,98 +822,66 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                 </div>
               </div>
 
-              {/* Section 4: 시공 세부 사양 (선택 입력) */}
-              <div className="rounded-xl border border-dashed border-slate-300 p-4 bg-slate-50/60">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-slate-500" />
-                    <div>
-                      <span className="text-xs font-bold text-slate-700">4. 시공 세부 사양 및 출력 규격 (선택 사항)</span>
-                      <p className="text-[11px] text-slate-500">※ 엑셀 견적서에 별도 규격이나 사양이 없는 경우 비워두셔도 됩니다.</p>
-                    </div>
+              {/* Section 4: 시공 벽면 및 출력 규격 */}
+              <div className="rounded-xl border border-slate-200 p-4 bg-white shadow-2xs">
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                    <Layers className="w-4 h-4 text-blue-600" />
+                    4. 시공 벽면 및 출력 규격
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowOptionalSpecs(!showOptionalSpecs)}
-                    className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-100 transition cursor-pointer"
-                  >
-                    {showOptionalSpecs ? '사양 입력창 접기' : '사양 입력창 열기'}
-                  </button>
+                  {(wallMaterial || printWidthMm || printHeightMm || printAreaM2) && (
+                    <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1">
+                      <Check className="w-3 h-3" /> 자동 입력됨
+                    </span>
+                  )}
                 </div>
 
-                {showOptionalSpecs && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mt-4 pt-4 border-t border-slate-200">
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">시공 내용 (품명/사양)</label>
-                      <input
-                        type="text"
-                        value={constructionDetails}
-                        onChange={(e) => setConstructionDetails(e.target.value)}
-                        placeholder="예: 대형 수직 벽면 UV 월프린팅 시공"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">시공 벽면 재질</label>
-                      <input
-                        type="text"
-                        value={wallMaterial}
-                        onChange={(e) => setWallMaterial(e.target.value)}
-                        placeholder="예: 수성 도장 콘크리트 벽면"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">출력 가로 크기 (mm)</label>
-                      <input
-                        type="number"
-                        value={printWidthMm}
-                        onChange={(e) => handleWidthChange(e.target.value)}
-                        placeholder="가로 mm"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">출력 세로 크기 (mm)</label>
-                      <input
-                        type="number"
-                        value={printHeightMm}
-                        onChange={(e) => handleHeightChange(e.target.value)}
-                        placeholder="세로 mm"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">출력 면적 (㎡ / 헤베)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={printAreaM2}
-                        onChange={(e) => setPrintAreaM2(e.target.value)}
-                        placeholder="㎡"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 font-bold text-blue-700 bg-white"
-                      />
-                    </div>
-
-                    <div className="md:col-span-3 flex items-center gap-3 pt-1">
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={useWhiteInk}
-                          onChange={(e) => setUseWhiteInk(e.target.checked)}
-                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
-                        />
-                        <span className="text-xs font-semibold text-slate-700">
-                          화이트 잉크 사용 (어두운 벽면/투명면 전용 하도 출력)
-                        </span>
-                      </label>
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">시공 벽면 재질</label>
+                    <input
+                      type="text"
+                      value={wallMaterial}
+                      onChange={(e) => setWallMaterial(e.target.value)}
+                      placeholder="예: 스타코, 스톤, 도장면"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+                    />
                   </div>
-                )}
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">총 출력 가로 크기 (mm)</label>
+                    <input
+                      type="number"
+                      value={printWidthMm}
+                      onChange={(e) => handleWidthChange(e.target.value)}
+                      placeholder="예: 1200"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">총 출력 세로 크기 (mm)</label>
+                    <input
+                      type="number"
+                      value={printHeightMm}
+                      onChange={(e) => handleHeightChange(e.target.value)}
+                      placeholder="예: 2500"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">총 출력 면적 (㎡ / 헤베)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={printAreaM2}
+                      onChange={(e) => handleAreaChange(e.target.value)}
+                      placeholder="예: 3.00"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 font-bold text-blue-700 bg-white"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Section 4: 상태 및 내부 관리자 메모 */}

@@ -208,9 +208,14 @@ ${fullSpreadsheetContext}`;
       merged.balanceAmount = merged.totalAmount - merged.depositAmount;
     }
 
+    // Sanity checks and cross-calculation on dimensions and area
     if (merged.printWidthMm && merged.printHeightMm && !merged.printAreaM2) {
       const area = (merged.printWidthMm / 1000) * (merged.printHeightMm / 1000);
       merged.printAreaM2 = Number(area.toFixed(2));
+    } else if (merged.printAreaM2 && merged.printWidthMm && !merged.printHeightMm && merged.printWidthMm > 0) {
+      merged.printHeightMm = Math.round((merged.printAreaM2 * 1000000) / merged.printWidthMm);
+    } else if (merged.printAreaM2 && merged.printHeightMm && !merged.printWidthMm && merged.printHeightMm > 0) {
+      merged.printWidthMm = Math.round((merged.printAreaM2 * 1000000) / merged.printHeightMm);
     }
 
     let extractedCount = 0;
