@@ -1,4 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+import fs from 'fs';
+import sharp from 'sharp';
+
+const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
   <defs>
     <!-- Studio Key Spotlight -->
     <radialGradient id="studioSpot" cx="48%" cy="32%" r="75%">
@@ -262,4 +265,20 @@
       벽면 프린트 서비스 / 장비판매
     </text>
   </g>
-</svg>
+</svg>`;
+
+async function run() {
+  fs.writeFileSync('public/wallpen-banner.svg', svgContent);
+  fs.writeFileSync('public/wallpen-banner2.svg', svgContent);
+
+  const pngBuffer = await sharp(Buffer.from(svgContent))
+    .png({ quality: 95, compressionLevel: 8 })
+    .toBuffer();
+
+  fs.writeFileSync('public/wallpen-banner.png', pngBuffer);
+  fs.writeFileSync('public/wallpen-banner2.png', pngBuffer);
+
+  console.log('Successfully generated wallpen-banner.png and wallpen-banner.svg with high fidelity studio photography bags!');
+}
+
+run().catch(console.error);

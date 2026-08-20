@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
+import { Lock, Mail, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { AdminUser } from '../types';
 
 interface LoginFormProps {
@@ -9,10 +9,11 @@ interface LoginFormProps {
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [email, setEmail] = useState('wallpenkorea@gmail.com');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [bannerUrl, setBannerUrl] = useState<string>(() => {
-    return localStorage.getItem('wallpen_custom_banner') || '/wallpen-banner1.svg';
+    return localStorage.getItem('wallpen_custom_banner') || '/wallpen-banner.png';
   });
 
   useEffect(() => {
@@ -123,15 +124,59 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        {/* WallPen Korea Brand Banner (View Only) */}
-        <div className="mx-auto w-full max-w-[360px] mb-5 overflow-hidden rounded-2xl shadow-xl shadow-slate-900/15 border border-slate-800/30 bg-slate-950">
+        {/* WallPen Korea Brand Banner with Quick Upload trigger */}
+        <div className="mx-auto w-full max-w-[360px] mb-5 overflow-hidden rounded-2xl shadow-xl shadow-slate-900/15 border border-slate-800/30 bg-slate-950 relative group">
           <img
             id="login-main-brand-banner"
-            src={bannerUrl || '/wallpen-banner1.svg'}
+            src={bannerUrl || '/wallpen-banner.png'}
             alt="wallPen KOREA"
-            className="w-full h-auto object-cover block select-none pointer-events-none"
+            className="w-full h-auto object-cover block select-none"
             loading="eager"
           />
+          <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-3">
+            <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-lg transition active:scale-95">
+              <span>📷 원본 이미지로 배너 변경</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const formData = new FormData();
+                  formData.append('banner', file);
+                  try {
+                    const res = await fetch('/api/settings/banner', {
+                      method: 'POST',
+                      body: formData,
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      const url = data.bannerUrl;
+                      setBannerUrl(url);
+                      localStorage.setItem('wallpen_custom_banner', url);
+                    } else {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const b64 = reader.result as string;
+                        setBannerUrl(b64);
+                        localStorage.setItem('wallpen_custom_banner', b64);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  } catch {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const b64 = reader.result as string;
+                      setBannerUrl(b64);
+                      localStorage.setItem('wallpen_custom_banner', b64);
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+            </label>
+          </div>
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           월펜 현장 견적 관리
@@ -189,14 +234,28 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="비밀번호를 입력하세요"
-                  className="block w-full pl-9 pr-3 py-2.5 text-sm border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition"
+                  className="block w-full pl-9 pr-10 py-2.5 text-sm border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition"
                 />
+                <button
+                  type="button"
+                  id="toggle-password-visibility-btn"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer transition"
+                  title={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                  aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-slate-600" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
 
