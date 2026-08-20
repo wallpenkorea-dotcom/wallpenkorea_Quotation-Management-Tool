@@ -89,6 +89,167 @@ export function parseGridData(rawRows: any[][], sheetName: string, fileName?: st
 
   const numRows = rawRows.length;
 
+  // 1. Dedicated WallPen Korea Quote Header Parser (Rows 0 to 14, Left Section c < 8)
+  for (let r = 0; r < Math.min(15, numRows); r++) {
+    const row = rawRows[r] || [];
+    for (let c = 0; c < Math.min(8, row.length); c++) {
+      const cellText = cleanStr(row[c]);
+      if (!cellText) continue;
+
+      // (1) Quote Date: Look for date string like '2026년 04월 22일' or '2026-04-22' in left upper quadrant
+      if (!extracted.quoteDate) {
+        const dateMatch = cellText.match(/(\d{4})[.\-\/년\s]+(\d{1,2})[.\-\/월\s]+(\d{1,2})/);
+        if (dateMatch) {
+          extracted.quoteDate = `${dateMatch[1]}-${dateMatch[2].padStart(2, '0')}-${dateMatch[3].padStart(2, '0')}`;
+        }
+      }
+
+      // (2) Customer Name: Check if row contains '귀하' or customer name cell
+      if (!extracted.customerName && (cellText.includes('귀하') || cellText === '귀하')) {
+        for (let prevC = 0; prevC < c; prevC++) {
+          const prevVal = cleanStr(row[prevC]);
+          if (prevVal && !prevVal.includes('공급자') && !prevVal.includes('견적서') && !prevVal.includes('유로테크')) {
+            extracted.customerName = prevVal;
+            break;
+          }
+        }
+        if (!extracted.customerName) {
+          const stripped = cellText.replace(/귀하/g, '').trim();
+          if (stripped && !stripped.includes('공급자') && !stripped.includes('유로테크')) {
+            extracted.customerName = stripped;
+          }
+        }
+      }
+
+      // (3) Contact string: e.g. "담당자: 심민근 / 전화번호: 010-2785-0163" or "전화번호: 010-..."
+      if (cellText.includes('담당자') || cellText.includes('전화번호') || cellText.includes('연락처') || cellText.includes('TEL') || cellText.includes('H.P')) {
+        const phoneMatch = cellText.match(/(?:전화번호|연락처|TEL|HP|H\.P|핸드폰|휴대폰)?\s*[:：]?\s*(01[016789][-\s]?\d{3,4}[-\s]?\d{4}|\d{2,3}[-\s]?\d{3,4}[-\s]?\d{4})/i);
+        if (phoneMatch && !extracted.customerPhone) {
+          extracted.customerPhone = phoneMatch[1].replace(/\s+/g, '-');
+        }
+
+        const mgrMatch = cellText.match(/담당자\s*[:：]?\s*([가-힣a-zA-Z]{2,10})/);
+        if (mgrMatch && !extracted.managerName && !mgrMatch[1].includes('유로테크')) {
+          extracted.managerName = mgrMatch[1].trim();
+        }
+      }
+
+      // (4) Customer Address: Check for address in left quadrant (Rows 6-11)
+      if (!extracted.address && r >= 5 && r <= 11 && c < 5) {
+        if (
+          /([가-힣]+(?:시|도|구|군|로|길|동|읍|면)\s+[가-힣0-9\-]+)/.test(cellText) &&
+          !cellText.includes('SK테크노파크') &&
+          !cellText.includes('광명시 하안로') &&
+          !cellText.includes('유로테크')
+        ) {
+          extracted.address = cellText;
+        }
+      }
+    }
+  }
+
+  // 2. Table scan for items, dimensions, materials, and totals
+  let headerRowIndex = -1;
+  const colIndex: { [key: string]: number } = {};
+  for (let r = 0; r < numRows; r++) {
+    const row = (rawRows[r] || []).map(cleanStr);
+    if (row.some((c) => c === 'No' || c === '내용' || c === '품명' || c === '항목')) {
+      headerRowIndex = r;
+      row.forEach((colName, idx) => {
+        if (colName === '내용' || colName === '품명' || colName === '항목') colIndex.desc = idx;
+        if (colName === '재질' || colName === '벽면재질') colIndex.material = idx;
+        if (colName.includes('가로')) colIndex.width = idx;
+        if (colName.includes('세로')) colIndex.height = idx;
+        if (colName.includes('총헤베') || colName === '헤베' || colName.includes('면적')) colIndex.area = idx;
+        if (colName.includes('공급가액+세액') || colName.includes('합계') || colName.includes('총금액')) colIndex.total = idx;
+        if (colName === '공급가액' || colName === '공급가') colIndex.supply = idx;
+      });
+      break;
+    }
+  }
+
+  const items: Array<{ desc: string; material?: string; width?: number; height?: number; area?: number }> = [];
+  if (headerRowIndex !== -1) {
+    for (let r = headerRowIndex + 1; r < numRows; r++) {
+      const row = rawRows[r] || [];
+      const firstCol = cleanStr(row[colIndex.desc !== undefined ? colIndex.desc : 1] || row[1] || row[2]);
+      const noCol = cleanStr(row[1] || row[0]);
+
+      if (firstCol.includes('합계') || noCol.includes('합계') || firstCol.includes('특이사항') || noCol.includes('특이사항')) {
+        if ((firstCol.includes('합계') || noCol.includes('합계')) && !extracted.totalAmount) {
+          for (let c = 0; c < row.length; c++) {
+            const num = parseNumber(row[c]);
+            if (num && num > 10000) {
+              extracted.totalAmount = num;
+              break;
+            }
+          }
+        }
+        break;
+      }
+
+      if (firstCol && !/^\d+$/.test(firstCol)) {
+        items.push({
+          desc: firstCol,
+          material: colIndex.material !== undefined ? cleanStr(row[colIndex.material]) : undefined,
+          width: colIndex.width !== undefined ? parseDecimal(row[colIndex.width]) : undefined,
+          height: colIndex.height !== undefined ? parseDecimal(row[colIndex.height]) : undefined,
+          area: colIndex.area !== undefined ? parseDecimal(row[colIndex.area]) : undefined,
+        });
+      }
+    }
+  }
+
+  if (items.length > 0) {
+    if (!extracted.constructionDetails) {
+      extracted.constructionDetails = items.slice(0, 3).map((it) => it.desc).join(', ') + (items.length > 3 ? ` 외 ${items.length - 3}건` : '');
+    }
+    const matItem = items.find((it) => it.material);
+    if (matItem && matItem.material && !extracted.wallMaterial) extracted.wallMaterial = matItem.material;
+
+    const sizeItem = items.find((it) => it.width && it.height);
+    if (sizeItem) {
+      if (!extracted.printWidthMm && sizeItem.width) {
+        extracted.printWidthMm = sizeItem.width < 100 ? Math.round(sizeItem.width * 1000) : Math.round(sizeItem.width);
+      }
+      if (!extracted.printHeightMm && sizeItem.height) {
+        extracted.printHeightMm = sizeItem.height < 100 ? Math.round(sizeItem.height * 1000) : Math.round(sizeItem.height);
+      }
+      if (!extracted.printAreaM2 && sizeItem.area) {
+        extracted.printAreaM2 = sizeItem.area;
+      }
+    }
+  }
+
+  // 3. Special notes scan (rows under 특이사항)
+  const notes: string[] = [];
+  let inNotes = false;
+  for (let r = 0; r < numRows; r++) {
+    const row = rawRows[r] || [];
+    const firstNonEmpty = row.find((c) => cleanStr(c) !== '');
+    const txt = cleanStr(firstNonEmpty);
+    if (txt.includes('특이사항') || txt.includes('시공조건')) {
+      inNotes = true;
+      continue;
+    }
+    if (inNotes) {
+      if (txt.startsWith('·') || txt.includes('최소 작업') || txt.includes('입금계좌') || r > headerRowIndex + 25) {
+        break;
+      }
+      if (txt) {
+        notes.push(txt);
+        const addrInNote = txt.match(/(?:시공\s*주소|현장\s*주소|설치\s*주소)\s*[:：]?\s*([가-힣0-9\s\-]+)/);
+        if (addrInNote && addrInNote[1].length > 5) {
+          extracted.address = addrInNote[1].trim();
+        }
+      }
+    }
+  }
+  if (notes.length > 0 && !extracted.specialNotes) {
+    extracted.specialNotes = notes.join('\n');
+  }
+
+  // 4. Generic Grid Iteration for labeled spreadsheets
   for (let r = 0; r < numRows; r++) {
     const row = rawRows[r] || [];
     const numCols = row.length;
@@ -131,7 +292,7 @@ export function parseGridData(rawRows: any[][], sheetName: string, fileName?: st
         }
       }
 
-      // 2. 고객명 / 수신 / 발주처
+      // 2. 고객명 / 수신 / 발주처 (Usually in columns < 5)
       if (
         !extracted.customerName &&
         (cellText === '수신' ||
@@ -142,30 +303,57 @@ export function parseGridData(rawRows: any[][], sheetName: string, fileName?: st
           cellText === '업체명' ||
           cellText === '수신처' ||
           cellText.startsWith('수신:') ||
-          cellText.startsWith('고객명:'))
+          cellText.startsWith('고객명:') ||
+          cellText.startsWith('발주처:'))
       ) {
-        const rawName = cellText.includes(':') ? cellText.split(':')[1]?.trim() : rightStr;
-        if (rawName) {
-          extracted.customerName = rawName.replace(/귀하|대표|담당자/g, '').trim();
+        if (cellText !== '상호' || c < 5) {
+          const rawName = cellText.includes(':') ? cellText.split(':')[1]?.trim() : rightStr;
+          if (rawName && !rawName.includes('유로테크')) {
+            extracted.customerName = rawName.replace(/귀하|대표|담당자/g, '').trim();
+          }
         }
       }
 
-      // 3. 고객 연락처
-      if (
-        !extracted.customerPhone &&
-        (cellText === '고객 연락처' ||
-          cellText === '고객연락처' ||
-          cellText === '고객 전화' ||
-          cellText === '발주처 연락처' ||
-          (cellText === '연락처' && c < 2))
-      ) {
-        const phone = cellText.includes(':') ? cellText.split(':')[1]?.trim() : rightStr;
-        if (phone && /[0-9-]/.test(phone)) {
-          extracted.customerPhone = phone;
+      // 3. 고객 연락처 (고객 전화번호, 핸드폰, TEL 등 - c < 5)
+      const isCustomerPhoneKey =
+        cellText === '고객 연락처' ||
+        cellText === '고객연락처' ||
+        cellText === '고객 전화' ||
+        cellText === '고객전화' ||
+        cellText === '발주처 연락처' ||
+        cellText === '발주처 전화' ||
+        cellText === '수신처 연락처' ||
+        cellText === '수신 연락처' ||
+        cellText === '고객 H.P' ||
+        cellText === '고객 TEL' ||
+        cellText.startsWith('고객연락처:') ||
+        cellText.startsWith('고객 연락처:') ||
+        cellText.startsWith('발주처 연락처:') ||
+        ((cellText === '전화번호' ||
+          cellText === '전화' ||
+          cellText === '연락처' ||
+          cellText === '핸드폰' ||
+          cellText === '휴대폰' ||
+          cellText === 'H.P' ||
+          cellText === 'HP' ||
+          cellText === 'TEL' ||
+          cellText === 'Tel' ||
+          cellText === 'Mobile' ||
+          cellText.startsWith('전화번호:') ||
+          cellText.startsWith('TEL:')) &&
+          c < 5);
+
+      if (!extracted.customerPhone && isCustomerPhoneKey) {
+        const rawPhone = cellText.includes(':') ? cellText.split(':')[1]?.trim() : rightStr;
+        if (rawPhone && /[0-9]/.test(rawPhone)) {
+          const cleanPhone = rawPhone.replace(/[^\d-+()~.\s]/g, '').trim();
+          if (cleanPhone.replace(/\D/g, '').length >= 7) {
+            extracted.customerPhone = cleanPhone;
+          }
         }
       }
 
-      // 4. 담당자 / 작성자 (Avoid matching '담당자 연락처')
+      // 4. 담당자 / 작성자
       if (
         !extracted.managerName &&
         !cellText.includes('연락처') &&
@@ -175,30 +363,42 @@ export function parseGridData(rawRows: any[][], sheetName: string, fileName?: st
           cellText === '현장담당' ||
           cellText === '담당자' ||
           cellText === '영업담당' ||
-          cellText === '견적담당')
+          cellText === '견적담당' ||
+          cellText === '대표자')
       ) {
         const name = cellText.includes(':') ? cellText.split(':')[1]?.trim() : rightStr;
-        if (name && !/[0-9]{4}-[0-9]{2}/.test(name)) {
-          extracted.managerName = name;
+        if (name && !/[0-9]{4}-[0-9]{2}/.test(name) && !name.includes('㈜')) {
+          extracted.managerName = name.replace(/\(인\)|인|대표/g, '').trim();
         }
       }
 
-      // 5. 담당자 연락처
-      if (
-        !extracted.managerPhone &&
-        (cellText === '담당자 연락처' ||
-          cellText === '작성자 연락처' ||
-          cellText === '담당자연락처' ||
-          cellText === '담당자 H.P' ||
-          (cellText === '연락처' && c >= 2))
-      ) {
+      // 5. 담당자 / 공급자 연락처 (c >= 4)
+      const isManagerPhoneKey =
+        cellText === '담당자 연락처' ||
+        cellText === '작성자 연락처' ||
+        cellText === '담당자연락처' ||
+        cellText === '담당자 H.P' ||
+        cellText === '회사 전화' ||
+        cellText === '대표번호' ||
+        ((cellText === '전화번호' ||
+          cellText === '전화' ||
+          cellText === '연락처' ||
+          cellText === 'TEL' ||
+          cellText === 'Tel' ||
+          cellText === 'H.P') &&
+          c >= 5);
+
+      if (!extracted.managerPhone && isManagerPhoneKey) {
         const phone = cellText.includes(':') ? cellText.split(':')[1]?.trim() : rightStr;
-        if (phone && /[0-9-]/.test(phone)) {
-          extracted.managerPhone = phone;
+        if (phone && /[0-9]/.test(phone)) {
+          const cleanPhone = phone.replace(/[^\d-+()~.\s]/g, '').trim();
+          if (cleanPhone.replace(/\D/g, '').length >= 7) {
+            extracted.managerPhone = cleanPhone;
+          }
         }
       }
 
-      // 6. 현장 주소
+      // 6. 현장 주소 / 고객 소재지 (c < 5 prefer customer address)
       if (
         !extracted.address &&
         (cellText === '현장주소' ||
@@ -208,10 +408,15 @@ export function parseGridData(rawRows: any[][], sheetName: string, fileName?: st
           cellText === '설치장소' ||
           cellText === '소재지' ||
           cellText === '주소' ||
-          cellText.startsWith('현장주소:'))
+          cellText.startsWith('현장주소:') ||
+          cellText.startsWith('시공장소:'))
       ) {
-        const addr = cellText.includes(':') ? cellText.split(':')[1]?.trim() : rightStr;
-        if (addr) extracted.address = addr;
+        if (cellText !== '소재지' || c < 5) {
+          const addr = cellText.includes(':') ? cellText.split(':')[1]?.trim() : rightStr;
+          if (addr && !addr.includes('SK테크노파크')) {
+            extracted.address = addr;
+          }
+        }
       }
 
       // 7. 견적일자
@@ -404,8 +609,20 @@ export function parseGridData(rawRows: any[][], sheetName: string, fileName?: st
     extracted.printAreaM2 = Number(area.toFixed(2));
   }
 
-  if (!extracted.projectName) {
-    extracted.projectName = fileName ? fileName.replace(/\.[^/.]+$/, '') : '';
+  if (
+    !extracted.projectName ||
+    extracted.projectName === '최종 견적서' ||
+    extracted.projectName === '견적서' ||
+    extracted.projectName === '새 현장' ||
+    extracted.projectName === '월펜코리아 견적서'
+  ) {
+    if (extracted.customerName) {
+      extracted.projectName = `${extracted.customerName} 벽면프린팅 시공`;
+    } else if (fileName && !fileName.includes('최종 견적서') && !fileName.includes('견적서')) {
+      extracted.projectName = fileName.replace(/\.[^/.]+$/, '');
+    } else {
+      extracted.projectName = fileName ? fileName.replace(/\.[^/.]+$/, '') : '새 벽면프린팅 현장';
+    }
   }
 
   let count = 0;

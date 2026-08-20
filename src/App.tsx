@@ -7,6 +7,7 @@ import { ProjectDetail } from './components/ProjectDetail';
 import { NewProjectModal } from './components/NewProjectModal';
 import { PublicShareView } from './components/PublicShareView';
 import { BannerSettingsModal } from './components/BannerSettingsModal';
+import { TemplateSettingsModal } from './components/TemplateSettingsModal';
 
 export default function App() {
   // Routing state based on Hash or URL
@@ -34,6 +35,7 @@ export default function App() {
   const [selectedProject, setSelectedProject] = useState<ProjectItem | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Parse share token from URL hash or path
@@ -206,7 +208,7 @@ export default function App() {
             </div>
 
             {/* Right Header Navigation & Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setIsBannerModalOpen(true)}
@@ -217,15 +219,25 @@ export default function App() {
                 <span>메인 배너 설정</span>
               </button>
 
-              <a
-                href="/api/projects/sample-template"
-                download="Wallpen_Sample_Estimate.xlsx"
-                className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-100 transition shadow-2xs"
-                title="테스트용 샘플 엑셀 견적서 다운로드"
-              >
-                <Download className="w-3.5 h-3.5 text-slate-500" />
-                샘플 엑셀
-              </a>
+              <div className="hidden md:inline-flex items-center rounded-lg border border-slate-300 bg-white shadow-2xs overflow-hidden">
+                <a
+                  href="/api/projects/sample-template"
+                  download
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition border-r border-slate-200"
+                  title="등록된 표준 견적서 엑셀 양식 다운로드"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-600" />
+                  견적 양식 다운
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setIsTemplateModalOpen(true)}
+                  className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer text-xs font-semibold px-2"
+                  title="내 엑셀 견적서 양식 등록 및 관리"
+                >
+                  양식 변경
+                </button>
+              </div>
 
               <button
                 type="button"
@@ -299,6 +311,12 @@ export default function App() {
       <BannerSettingsModal
         isOpen={isBannerModalOpen}
         onClose={() => setIsBannerModalOpen(false)}
+      />
+
+      {/* Excel Estimate Template Management Modal */}
+      <TemplateSettingsModal
+        isOpen={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
       />
     </div>
   );

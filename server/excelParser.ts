@@ -84,12 +84,12 @@ export async function parseExcelEstimate(buffer: Buffer): Promise<{ extracted: E
 
         const prompt = `다음은 월펜코리아(WallPen Korea) 벽면프린트 시공 견적서 엑셀 파일의 원문 내용입니다.
 견적서를 정밀 분석하여 다음 JSON 형식으로 주요 항목을 추출하세요:
-- projectName: 현장명 / 공사명
-- customerName: 고객명 / 발주처 / 수신처
-- customerPhone: 고객 연락처
-- address: 시공 현장 주소
+- projectName: 현장명 / 공사명 / 건명
+- customerName: 고객명 / 발주처 / 수신처 / 귀하 상호 (우측 공급자 ㈜유로테크가 아닌 좌측 수신/발주처 이름)
+- customerPhone: 고객 연락처 (좌측 수신/발주처 영역에 적힌 전화번호, 핸드폰, 연락처. 공급자 유로테크의 대표번호 1899-4032가 아닌 고객 전화번호)
+- address: 시공 현장 주소 / 고객 소재지 (공급자 주소가 아닌 현장/발주처 주소)
 - managerName: 현장담당자명 / 작성자
-- managerPhone: 담당자 연락처
+- managerPhone: 담당자 연락처 / 공급자 전화번호 (1899-4032 등)
 - quoteDate: 견적일자 (YYYY-MM-DD)
 - scheduledDate: 시공예정일 (YYYY-MM-DD)
 - constructionDetails: 시공 내용 / 품명
@@ -163,32 +163,32 @@ ${fullSpreadsheetContext}`;
       }
     }
 
-    // 5. Intelligent Merge: prioritize valid AI data, fall back to heuristic
+    // 5. Intelligent Merge: prioritize verified header extracted data, enhanced by AI
     const merged: ExtractedExcelData = {
       detectedSheetName: primarySheetData.sheetName,
       rawCellsCount: sheetsTextData.reduce((acc, s) => acc + s.rawRows.reduce((a, r) => a + (Array.isArray(r) ? r.length : 0), 0), 0),
-      projectName: aiData?.projectName || heuristicData.projectName || '',
-      customerName: aiData?.customerName || heuristicData.customerName || '',
-      customerPhone: aiData?.customerPhone || heuristicData.customerPhone || '',
-      address: aiData?.address || heuristicData.address || '',
-      managerName: aiData?.managerName || heuristicData.managerName || '',
-      managerPhone: aiData?.managerPhone || heuristicData.managerPhone || '',
-      quoteDate: aiData?.quoteDate || heuristicData.quoteDate || new Date().toISOString().split('T')[0],
+      projectName: heuristicData.projectName || aiData?.projectName || '',
+      customerName: heuristicData.customerName || aiData?.customerName || '',
+      customerPhone: heuristicData.customerPhone || aiData?.customerPhone || '',
+      address: heuristicData.address || aiData?.address || '',
+      managerName: heuristicData.managerName || aiData?.managerName || '',
+      managerPhone: heuristicData.managerPhone || aiData?.managerPhone || '',
+      quoteDate: heuristicData.quoteDate || aiData?.quoteDate || new Date().toISOString().split('T')[0],
       scheduledDate: aiData?.scheduledDate || heuristicData.scheduledDate || '',
-      constructionDetails: aiData?.constructionDetails || heuristicData.constructionDetails || '',
-      wallMaterial: aiData?.wallMaterial || heuristicData.wallMaterial || '',
-      printWidthMm: aiData?.printWidthMm || heuristicData.printWidthMm,
-      printHeightMm: aiData?.printHeightMm || heuristicData.printHeightMm,
-      printAreaM2: aiData?.printAreaM2 || heuristicData.printAreaM2,
+      constructionDetails: heuristicData.constructionDetails || aiData?.constructionDetails || '',
+      wallMaterial: heuristicData.wallMaterial || aiData?.wallMaterial || '',
+      printWidthMm: heuristicData.printWidthMm || aiData?.printWidthMm,
+      printHeightMm: heuristicData.printHeightMm || aiData?.printHeightMm,
+      printAreaM2: heuristicData.printAreaM2 || aiData?.printAreaM2,
       useWhiteInk: aiData?.useWhiteInk ?? heuristicData.useWhiteInk ?? false,
-      supplyAmount: aiData?.supplyAmount ?? heuristicData.supplyAmount,
-      taxAmount: aiData?.taxAmount ?? heuristicData.taxAmount,
-      totalAmount: aiData?.totalAmount ?? heuristicData.totalAmount,
-      depositAmount: aiData?.depositAmount ?? heuristicData.depositAmount,
-      balanceAmount: aiData?.balanceAmount ?? heuristicData.balanceAmount,
+      supplyAmount: heuristicData.supplyAmount ?? aiData?.supplyAmount,
+      taxAmount: heuristicData.taxAmount ?? aiData?.taxAmount,
+      totalAmount: heuristicData.totalAmount ?? aiData?.totalAmount,
+      depositAmount: heuristicData.depositAmount ?? aiData?.depositAmount,
+      balanceAmount: heuristicData.balanceAmount ?? aiData?.balanceAmount,
       depositDueDate: aiData?.depositDueDate || heuristicData.depositDueDate || '',
       paymentMemo: aiData?.paymentMemo || heuristicData.paymentMemo || '',
-      specialNotes: aiData?.specialNotes || heuristicData.specialNotes || '',
+      specialNotes: heuristicData.specialNotes || aiData?.specialNotes || '',
       internalMemo: '',
     };
 

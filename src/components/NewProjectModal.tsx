@@ -161,8 +161,9 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
   const handleFileUpload = async (file: File) => {
     setErrorMsg('');
     const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-    if (ext !== '.xlsx' && ext !== '.xls') {
-      setErrorMsg('지원하지 않는 파일 형식입니다. .xlsx 또는 .xls 엑셀 파일을 업로드해주세요.');
+    const validExtensions = ['.xlsx', '.xls', '.xlsm', '.xlsb', '.csv'];
+    if (!validExtensions.includes(ext)) {
+      setErrorMsg('지원하지 않는 파일 형식입니다. .xlsx, .xls, .xlsm, .csv 엑셀 파일을 업로드해주세요.');
       return;
     }
 
@@ -193,6 +194,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
       try {
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('originalFileName', file.name);
 
         const res = await fetch('/api/projects/parse-excel', {
           method: 'POST',
@@ -204,7 +206,14 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
           if (contentType.includes('application/json')) {
             const resData = await res.json();
             if (resData && resData.success && resData.extracted) {
-              applyExtractedData(resData.extracted, resData.originalFile, resData.sheetNames);
+              const enrichedFileInfo: ProjectFile = resData.originalFile
+                ? {
+                    ...resData.originalFile,
+                    originalName: file.name || resData.originalFile.originalName,
+                  }
+                : tempFileInfo;
+
+              applyExtractedData(resData.extracted, enrichedFileInfo, resData.sheetNames);
             }
           }
         }
@@ -305,15 +314,40 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
         isShareActive: true,
       };
 
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      let res: Response;
+      try {
+        res = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (fetchErr: any) {
+        throw new Error('서버와 통신할 수 없습니다: ' + (fetchErr.message || '네트워크 오류'));
+      }
 
-      const savedProject = await res.json();
+      const text = await res.text();
+      let savedProject: any = null;
+      if (text) {
+        try {
+          savedProject = JSON.parse(text);
+        } catch {
+          console.warn('Response was not JSON:', text);
+        }
+      }
+
       if (!res.ok) {
-        throw new Error(savedProject.error || '현장 저장에 실패했습니다.');
+        throw new Error(savedProject?.error || `현장 저장 실패 (HTTP ${res.status}): ${text || '응답이 없습니다.'}`);
+      }
+
+      if (!savedProject) {
+        // Safe fallback project object
+        savedProject = {
+          ...payload,
+          id: 'proj-' + Date.now().toString(36),
+          shareToken: 'wp_' + Math.random().toString(36).substring(2, 10),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
       }
 
       resetForm();
@@ -479,7 +513,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                   <a
                     href="/api/projects/sample-template"
-                    download="Wallpen_Sample_Estimate.xlsx"
+                    download
                     className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-100 transition shadow-2xs"
                   >
                     <Download className="w-3.5 h-3.5 text-slate-500" />

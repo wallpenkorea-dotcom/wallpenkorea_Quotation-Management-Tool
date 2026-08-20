@@ -44,6 +44,26 @@ const memoryUpload = multer({
   limits: { fileSize: 50 * 1024 * 1024 },
 });
 
+// Helper to fix Korean / UTF-8 filename encoding from multer (latin1 -> utf8)
+const decodeFileName = (name: string): string => {
+  if (!name) return '';
+  try {
+    if (/[À-ÿ]/.test(name) || name.includes('ì') || name.includes('ê') || name.includes('í') || name.includes('ë')) {
+      const decoded = Buffer.from(name, 'latin1').toString('utf8');
+      if (!decoded.includes('')) {
+        return decoded;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  try {
+    return decodeURIComponent(escape(name));
+  } catch {
+    return name;
+  }
+};
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -146,10 +166,16 @@ async function startServer() {
         return res.status(400).json({ error: '엑셀 파일이 첨부되지 않았습니다.' });
       }
 
+      const decodedName = decodeFileName(req.body?.originalFileName || req.file.originalname);
       const { extracted, sheetNames } = await parseExcelEstimate(req.file.buffer);
 
+      // If projectName wasn't extracted, fallback to cleaned filename
+      if (!extracted.projectName && decodedName) {
+        extracted.projectName = decodedName.replace(/\.[^/.]+$/, '');
+      }
+
       // Also save the uploaded excel to uploads directory as original quote file
-      const ext = path.extname(req.file.originalname).toLowerCase();
+      const ext = path.extname(decodedName || req.file.originalname).toLowerCase() || '.xlsx';
       const filename = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
       const filePath = path.join(UPLOADS_DIR, filename);
       fs.writeFileSync(filePath, req.file.buffer);
@@ -157,7 +183,7 @@ async function startServer() {
       const savedFileInfo: ProjectFile = {
         id: 'file-' + Date.now().toString(36),
         projectId: '',
-        originalName: req.file.originalname,
+        originalName: decodedName,
         filename: filename,
         fileType: '원본 엑셀 견적서',
         fileSize: req.file.size,
@@ -181,16 +207,92 @@ async function startServer() {
     }
   });
 
-  // 4. Sample Excel Template Download
+  // 4. Sample & Custom Excel Template Download / Upload
   app.get('/api/projects/sample-template', (req, res) => {
     try {
+      const customTemplatePath = path.join(DATA_DIR, 'custom-template.xlsx');
+      const settingsPath = path.join(DATA_DIR, 'settings.json');
+      let originalName = '월펜_표준_견적양식.xlsx';
+      
+      if (fs.existsSync(settingsPath)) {
+        try {
+          const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+          if (settings.templateOriginalName) {
+            originalName = decodeFileName(settings.templateOriginalName);
+          }
+        } catch {}
+      }
+
+      // Add no-cache headers to prevent browser from caching old sample files
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
+      if (fs.existsSync(customTemplatePath)) {
+        return res.download(customTemplatePath, originalName);
+      }
+
       const buffer = generateSampleExcelBuffer();
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', 'attachment; filename="Wallpen_Sample_Estimate.xlsx"');
       res.send(buffer);
     } catch (e: any) {
-      res.status(500).json({ error: '샘플 엑셀 생성 실패' });
+      res.status(500).json({ error: '견적 양식 다운로드 실패' });
     }
+  });
+
+  app.post('/api/settings/template', memoryUpload.single('template'), async (req: Request, res: Response) => {
+    try {
+      if (!req.file || !req.file.buffer) {
+        return res.status(400).json({ error: '엑셀 파일이 첨부되지 않았습니다.' });
+      }
+
+      const customTemplatePath = path.join(DATA_DIR, 'custom-template.xlsx');
+      fs.writeFileSync(customTemplatePath, req.file.buffer);
+
+      const settingsPath = path.join(DATA_DIR, 'settings.json');
+      let settings: any = {};
+      if (fs.existsSync(settingsPath)) {
+        try {
+          settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+        } catch {}
+      }
+      const originalName = decodeFileName(req.body?.originalFileName || req.file.originalname);
+      settings.hasCustomTemplate = true;
+      settings.templateOriginalName = originalName;
+      settings.templateUpdatedAt = new Date().toISOString();
+      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
+
+      return res.json({
+        success: true,
+        templateName: originalName,
+        message: '견적서 엑셀 양식이 성공적으로 등록되었습니다.',
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: '템플릿 저장 실패: ' + err.message });
+    }
+  });
+
+  app.get('/api/settings/template-info', (req, res) => {
+    const customTemplatePath = path.join(DATA_DIR, 'custom-template.xlsx');
+    const settingsPath = path.join(DATA_DIR, 'settings.json');
+    let originalName = '';
+    let updatedAt = '';
+
+    if (fs.existsSync(settingsPath)) {
+      try {
+        const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+        originalName = settings.templateOriginalName || '';
+        updatedAt = settings.templateUpdatedAt || '';
+      } catch {}
+    }
+
+    const hasCustom = fs.existsSync(customTemplatePath);
+    res.json({
+      hasCustomTemplate: hasCustom,
+      templateName: hasCustom ? (originalName || '월펜_표준_견적양식.xlsx') : '기본 샘플 엑셀',
+      updatedAt,
+    });
   });
 
   // 5. Projects CRUD
