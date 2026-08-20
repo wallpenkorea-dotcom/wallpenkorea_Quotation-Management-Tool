@@ -91,7 +91,7 @@ export async function parseExcelEstimate(buffer: Buffer): Promise<{ extracted: E
 - managerName: 현장담당자명 / 작성자
 - managerPhone: 담당자 연락처 / 공급자 전화번호 (1899-4032 등)
 - quoteDate: 견적일자 (YYYY-MM-DD)
-- scheduledDate: 시공예정일 (YYYY-MM-DD)
+- scheduledDate: 시공예정일 / 작업 진행 날짜 (특이사항 등에 '1. 작업 진행 날짜: 2026.04.26(일)' 또는 본문에 기재된 시공/작업 일자, YYYY-MM-DD)
 - constructionDetails: 시공 내용 / 품명
 - wallMaterial: 벽면 재질
 - printWidthMm: 가로 크기(mm 정수)
@@ -174,7 +174,7 @@ ${fullSpreadsheetContext}`;
       managerName: heuristicData.managerName || aiData?.managerName || '',
       managerPhone: heuristicData.managerPhone || aiData?.managerPhone || '',
       quoteDate: heuristicData.quoteDate || aiData?.quoteDate || new Date().toISOString().split('T')[0],
-      scheduledDate: aiData?.scheduledDate || heuristicData.scheduledDate || '',
+      scheduledDate: heuristicData.scheduledDate || aiData?.scheduledDate || '',
       constructionDetails: heuristicData.constructionDetails || aiData?.constructionDetails || '',
       wallMaterial: heuristicData.wallMaterial || aiData?.wallMaterial || '',
       printWidthMm: heuristicData.printWidthMm || aiData?.printWidthMm,

@@ -72,16 +72,34 @@ export function parseGridData(rawRows: any[][], sheetName: string, fileName?: st
   };
 
   const parseDateStr = (val: any): string | undefined => {
-    if (!val) return undefined;
-    if (val instanceof Date) {
+    if (!val && val !== 0) return undefined;
+    if (val instanceof Date && !isNaN(val.getTime())) {
       return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
     }
+    if (typeof val === 'number' && val > 30000 && val < 60000) {
+      const jsDate = new Date(Math.round((val - 25569) * 86400 * 1000));
+      if (!isNaN(jsDate.getTime())) {
+        const y = jsDate.getUTCFullYear();
+        const m = String(jsDate.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(jsDate.getUTCDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+    }
     const str = String(val).trim();
+    // Match 2026.04.26, 2026-04-26, 2026년 4월 26일, 2026/04/26, 2026.04.26(일)
     const match = str.match(/(\d{4})[.\-\/년\s]+(\d{1,2})[.\-\/월\s]+(\d{1,2})/);
     if (match) {
       const y = match[1];
       const m = match[2].padStart(2, '0');
       const d = match[3].padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    // Match short year 26.04.26
+    const matchShort = str.match(/(\d{2})[.\-\/년\s]+(\d{1,2})[.\-\/월\s]+(\d{1,2})/);
+    if (matchShort && parseInt(matchShort[1], 10) >= 20) {
+      const y = `20${matchShort[1]}`;
+      const m = matchShort[2].padStart(2, '0');
+      const d = matchShort[3].padStart(2, '0');
       return `${y}-${m}-${d}`;
     }
     return undefined;
@@ -228,17 +246,51 @@ export function parseGridData(rawRows: any[][], sheetName: string, fileName?: st
     const row = rawRows[r] || [];
     const firstNonEmpty = row.find((c) => cleanStr(c) !== '');
     const txt = cleanStr(firstNonEmpty);
-    if (txt.includes('특이사항') || txt.includes('시공조건')) {
+    if (
+      txt.includes('특이사항') ||
+      txt.includes('시공조건') ||
+      txt.includes('작업조건') ||
+      txt.includes('안내사항') ||
+      txt.includes('참고사항') ||
+      txt.includes('전달사항')
+    ) {
       inNotes = true;
       continue;
     }
     if (inNotes) {
-      if (txt.startsWith('·') || txt.includes('최소 작업') || txt.includes('입금계좌') || r > headerRowIndex + 25) {
+      if (txt.startsWith('·') || txt.includes('최소 작업') || txt.includes('입금계좌') || r > headerRowIndex + 30) {
         break;
       }
       if (txt) {
         notes.push(txt);
-        const addrInNote = txt.match(/(?:시공\s*주소|현장\s*주소|설치\s*주소)\s*[:：]?\s*([가-힣0-9\s\-]+)/);
+
+        // Extract scheduled / work date from note line (e.g., "1. 작업 진행 날짜: 2026.04.26(일)", "시공일자: 2026-05-10")
+        if (!extracted.scheduledDate) {
+          const dateInNoteMatch = txt.match(
+            /(?:작업\s*진행\s*날짜|작업\s*진행일|작업\s*날짜|작업일자|작업일|시공\s*예정일|시공\s*예정|시공\s*날짜|시공일자|시공일|작업\s*일정|시공\s*일정|진행\s*일자|진행\s*날짜|공사\s*일자|공사일|투입일|설치\s*일자|설치일|일정)\s*[:：]?\s*(\d{4}[.\-\/년\s]+\d{1,2}[.\-\/월\s]+\d{1,2}(?:\s*\([가-힣]\))?)/
+          );
+          if (dateInNoteMatch) {
+            const parsed = parseDateStr(dateInNoteMatch[1]);
+            if (parsed) extracted.scheduledDate = parsed;
+          } else if (
+            txt.includes('작업') ||
+            txt.includes('진행') ||
+            txt.includes('시공') ||
+            txt.includes('일정') ||
+            txt.includes('날짜') ||
+            txt.includes('일자')
+          ) {
+            const genericDateMatch = txt.match(/(\d{4}[.\-\/년\s]+\d{1,2}[.\-\/월\s]+\d{1,2})/);
+            if (genericDateMatch) {
+              const parsed = parseDateStr(genericDateMatch[0]);
+              if (parsed && parsed !== extracted.quoteDate) {
+                extracted.scheduledDate = parsed;
+              }
+            }
+          }
+        }
+
+        const addrInNote = txt.match(/(?:시공\s*주소|현장\s*주소|설치\s*주소|배송\s*주소)\s*[:：]?\s*([가-힣0-9\s\-]+)/);
         if (addrInNote && addrInNote[1].length > 5) {
           extracted.address = addrInNote[1].trim();
         }
@@ -429,17 +481,49 @@ export function parseGridData(rawRows: any[][], sheetName: string, fileName?: st
       }
 
       // 8. 시공예정일
-      if (
-        !extracted.scheduledDate &&
-        (cellText === '시공예정일' ||
-          cellText === '시공예정' ||
-          cellText === '시공일' ||
-          cellText === '설치예정일' ||
-          cellText === '설치일' ||
-          cellText === '작업예정일' ||
-          cellText === '납기일')
-      ) {
-        const d = parseDateStr(rightVal) || parseDateStr(cellText);
+      const isScheduledDateKey =
+        cellText === '시공예정일' ||
+        cellText === '시공 예정일' ||
+        cellText === '시공예정' ||
+        cellText === '시공 예정' ||
+        cellText === '시공일' ||
+        cellText === '시공일자' ||
+        cellText === '시공 날짜' ||
+        cellText === '시공날짜' ||
+        cellText === '작업일' ||
+        cellText === '작업일자' ||
+        cellText === '작업 날짜' ||
+        cellText === '작업날짜' ||
+        cellText === '작업진행일' ||
+        cellText === '작업진행날짜' ||
+        cellText === '작업 진행 날짜' ||
+        cellText === '작업 진행일' ||
+        cellText === '작업일정' ||
+        cellText === '작업 일정' ||
+        cellText === '시공일정' ||
+        cellText === '시공 일정' ||
+        cellText === '설치예정일' ||
+        cellText === '설치예정' ||
+        cellText === '설치일' ||
+        cellText === '설치일자' ||
+        cellText === '작업예정일' ||
+        cellText === '작업예정' ||
+        cellText === '공사예정일' ||
+        cellText === '공사일자' ||
+        cellText === '공사일' ||
+        cellText === '투입일' ||
+        cellText === '투입예정일' ||
+        cellText === '납기일' ||
+        cellText.startsWith('시공예정일:') ||
+        cellText.startsWith('시공일:') ||
+        cellText.startsWith('작업일:') ||
+        cellText.startsWith('작업일자:') ||
+        cellText.startsWith('작업 진행 날짜:') ||
+        cellText.startsWith('작업진행날짜:');
+
+      if (!extracted.scheduledDate && isScheduledDateKey) {
+        const rawDate = cellText.includes(':') ? cellText.split(':')[1]?.trim() : rightVal;
+        const d = parseDateStr(rawDate) || parseDateStr(cellText);
         if (d) extracted.scheduledDate = d;
       }
 
